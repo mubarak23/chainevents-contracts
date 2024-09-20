@@ -1,7 +1,7 @@
 use chainevents_contracts::base::types::{EventDetailsParams};
 
 #[starknet::interface]
-pub trait IEvents<TContractState> {
+pub trait IEvent<TContractState> {
     fn create_an_event(
         ref self: TContractState, name: felt252, location: felt252
     ) -> EventDetailsParams; // map eventId to Event details - registerEVENTS
