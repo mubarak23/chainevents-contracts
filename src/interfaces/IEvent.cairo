@@ -1,17 +1,19 @@
-use chainevents_contracts::base::types::{EventDetailsParams};
+use chainevents_contracts::base::types::{EventDetails, EventRegistration};
 use core::starknet::ContractAddress;
 #[starknet::interface]
 pub trait IEvent<TContractState> {
-    fn create_an_event(
-        ref self: TContractState, name: felt252, location: felt252
-    ); // map eventId to Event details - registerEVENTS
-    fn register_for_event(
+    // EXTERNAL FUNCTION
+    fn add_event(ref self: TContractState, name: ByteArray, location: ByteArray);
+    fn register_for_event(ref self: TContractState, event_id: u256, event_fee: u256);
+    fn end_event_registration(
         ref self: TContractState, event_id: u256
-    ); // map eventid to user regster address - regsiter
-    fn mark_event_attendance(
-        ref self: TContractState, event_id: u256
-    ); // map event Id to user address - attendance
-    fn attendees_event(self: @TContractState, event_id: u256) -> ContractAddress;
-    fn process_poa(ref self: TContractState, event_id: u256) -> bool;
+    ); // only owner can closed an event 
+    fn rsvp_for_event(ref self: TContractState, event_id: u256);
+    fn upgrade_event(ref self: TContractState, event_id: u256, paid_amount: u256);
+
+    // GETTER FUNCTION
+    fn event_details(self: @TContractState, event_id: u256) -> EventDetails;
+    fn event_owner(self: @TContractState, event_id: u256) -> ContractAddress;
+    fn attendee_event_details(self: @TContractState, event_id: u256) -> EventRegistration;
 }
 

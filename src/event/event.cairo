@@ -1,7 +1,7 @@
 #[starknet::contract]
 pub mod Event {
     use core::num::traits::zero::Zero;
-    use chainevents_contracts::base::types::{EventDetailsParams};
+    use chainevents_contracts::base::types::{EventDetails, EventRegistration, EventType};
     use chainevents_contracts::base::errors::Errors::{
         ZERO_ADDRESS_OWNER, ZERO_ADDRESS_CALLER, NOT_OWNER
     };
@@ -13,12 +13,23 @@ pub mod Event {
 
     #[storage]
     struct Storage {
-        new_events: Map<u256, EventDetailsParams>, // map <eventId, EventDetailsParams>
+        new_events: Map<u256, EventDetails>, // map <eventId, EventDetailsParams>
         event_counts: u256,
         registered_events: Map<
             u256, Map<u256, ContractAddress>
         >, // map <eventId, RegisteredUser Address> 
-        event_attendances: Map<u256, ContractAddress> //  map <eventId, RegisteredUser Address> 
+        event_attendances: Map<u256, ContractAddress>, //  map <eventId, RegisteredUser Address> 
+        // STORAGE MAPPING REFACTOR
+        event_owners: Map<u256, ContractAddress>, // map(event_id, eventOwnerAddress)
+        event_count: u256,
+        event_details: Map<u256, EventDetails>, // map(event_id, EventDetailsParams)
+        event_registrations: Map<ContractAddress, u256>, // map<attendeeAddress, event_id>
+        attendee_event_details: Map<
+            (u256, ContractAddress), EventRegistration
+        >, // map <(event_id, attendeeAddress), EventRegistration>
+        paid_events: Map<
+            (ContractAddress, u256), u256
+        > // map<(attendeeAddress, event_id), amount_paid>
     }
 
     // event
@@ -56,59 +67,43 @@ pub mod Event {
     }
 
     #[abi(embed_v0)]
-    impl EventImpl of IEvent<ContractState> {
-        fn create_an_event(ref self: ContractState, name: felt252, location: felt252) {
-            // ensure user cannot register multiple event with the same name,
+    impl EventsImpl of IEvent<ContractState> {
+        fn add_event(ref self: ContractState, name: ByteArray, location: ByteArray) {}
+        fn register_for_event(ref self: ContractState, event_id: u256, event_fee: u256) {}
+        fn end_event_registration(
+            ref self: ContractState, event_id: u256
+        ) {} // only owner can closed an event 
+        fn rsvp_for_event(ref self: ContractState, event_id: u256) {}
+        fn upgrade_event(ref self: ContractState, event_id: u256, paid_amount: u256) {}
 
-            let event_counts = self.event_counts.read();
-            let event_id = event_counts + 1;
-            let event_orgainer = get_caller_address();
-            let event_details = EventDetailsParams {
-                name: name, location: location, event_id: event_id, organizer: event_orgainer
+        // GETTER FUNCTION
+        fn event_details(self: @ContractState, event_id: u256) -> EventDetails {
+            let event_details = EventDetails {
+                event_id: 1,
+                name: 'demo event',
+                location: 'Dan Marna',
+                organizer: get_caller_address(),
+                total_register: 1,
+                total_attendees: 2,
+                event_type: EventType::Free,
+                is_closed: false,
+                paid_amount: 0,
             };
-            self.new_events.write(event_id, event_details);
-
-            // dispatch events
-            self.emit(NewEventRegistered { name: name, event_id: event_id, location: location });
+            event_details
         }
-
-        fn register_for_event(ref self: ContractState, event_id: u256) {
-            let event = self.new_events.read(event_id);
-            let registered_user = get_caller_address();
-            //  let all_registered_events = self.registered_events.read(event_id);
-            let already_registered_user = self
-                .registered_events
-                .entry(event_id)
-                .entry(event_id)
-                .read();
-            assert(already_registered_user == registered_user, 'Already Registered');
-
-            self.registered_events.entry(event_id).entry(event_id).write(registered_user);
-
-            self
-                .emit(
-                    RegisteredForEvent {
-                        event_id: event_id, event_name: event.name, user_address: registered_user
-                    }
-                );
+        fn event_owner(self: @ContractState, event_id: u256) -> ContractAddress {
+            get_caller_address()
         }
-
-        fn mark_event_attendance(ref self: ContractState, event_id: u256) {
-            let has_registered = self.registered_events.entry(event_id).entry(event_id).read();
-            let registered_user = get_caller_address();
-            assert(has_registered != registered_user, 'Not Registered');
-
-            // mark attendance
-            self.event_attendances.write(event_id, registered_user);
-
-            self.emit(EventAttendanceMark { event_id: event_id, user_address: registered_user });
-        }
-
-        fn attendees_event(self: @ContractState, event_id: u256) -> ContractAddress {
-            self.event_attendances.read(event_id)
-        }
-        fn process_poa(ref self: ContractState, event_id: u256) -> bool {
-            true
+        fn attendee_event_details(self: @ContractState, event_id: u256) -> EventRegistration {
+            let event_attendance_details = EventRegistration {
+                attendee_address: get_caller_address(),
+                amount_paid: 34,
+                has_rsvp: true,
+                nft_contract_address: get_caller_address(),
+                nft_token_id: 34,
+                organizer: get_caller_address()
+            };
+            event_attendance_details
         }
     }
 }
