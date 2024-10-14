@@ -14,8 +14,8 @@ You will need to have Scarb and Starknet Foundry installed on your system. Refer
 To use this repository, first clone it:
 
 ```
-git clone git@github.com:horuslabsio/TBA.git
-cd TBA
+git clone mubarak23/chainevents-contracts
+cd chainevents-contracts
 ```
 
 ### Building contracts
