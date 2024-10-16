@@ -5,8 +5,8 @@ use core::starknet::ContractAddress;
 #[derive(Drop, Serde, starknet::Store, Clone)]
 pub struct EventDetails {
     pub event_id: u256,
-    pub name: felt252,
-    pub location: felt252,
+    pub name: ByteArray,
+    pub location: ByteArray,
     pub organizer: ContractAddress,
     pub total_register: u256,
     pub total_attendees: u256,
