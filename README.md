@@ -22,6 +22,20 @@ cd chainevents-contracts
 
 To build the contracts, run the command:
 
+- setup scarb via asdf
+
+```
+asdf local scarb 2.8.3
+```
+
+- setup starknet-foundry via asdf
+
+```
+asdf local starknet-foundry 0.31.0
+```
+
+- Build
+
 ```
 scarb build
 ```

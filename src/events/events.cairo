@@ -54,32 +54,32 @@ pub mod Events {
     }
 
     #[derive(Drop, starknet::Event)]
-   pub struct RegisteredForEvent {
+    pub struct RegisteredForEvent {
         pub event_id: u256,
         pub event_name: felt252,
         pub user_address: ContractAddress
     }
 
     #[derive(Drop, starknet::Event)]
-   pub struct EndEventRegistration {
-       pub event_id: u256,
-       pub event_name: felt252,
-       pub event_owner: ContractAddress
+    pub struct EndEventRegistration {
+        pub event_id: u256,
+        pub event_name: felt252,
+        pub event_owner: ContractAddress
     }
 
     #[derive(Drop, starknet::Event)]
-   pub struct RSVPForEvent{
-       pub event_id: u256,
-       pub event_name: felt252,
-       pub attendee_address: ContractAddress
+    pub struct RSVPForEvent {
+        pub event_id: u256,
+        pub event_name: felt252,
+        pub attendee_address: ContractAddress
     }
 
     #[derive(Drop, starknet::Event)]
-   pub struct UpgradedEvent{
-       pub event_id: u256,
-       pub event_name: felt252,
-       pub paid_amount: u256,
-       pub event_type: EventType
+    pub struct UpgradedEvent {
+        pub event_id: u256,
+        pub event_name: felt252,
+        pub paid_amount: u256,
+        pub event_type: EventType
     }
 
 
