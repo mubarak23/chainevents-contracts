@@ -39,7 +39,10 @@ pub mod Events {
     enum Event {
         NewEventAdded: NewEventAdded,
         RegisteredForEvent: RegisteredForEvent,
-        EventAttendanceMark: EventAttendanceMark
+        EventAttendanceMark: EventAttendanceMark,
+        UpgradedEvent: UpgradedEvent,
+        EndEventRegistration: EndEventRegistration,
+        RSVPForEvent: RSVPForEvent
     }
 
     #[derive(Drop, starknet::Event)]
@@ -56,6 +59,29 @@ pub mod Events {
         event_name: felt252,
         user_address: ContractAddress
     }
+
+    #[derive(Drop, starknet::Event)]
+    struct EndEventRegistration {
+        event_id: u256,
+        event_name: felt252,
+        event_owner: ContractAddress
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct RSVPForEvent{
+        event_id: u256,
+        event_name: felt252,
+        attendee_address: ContractAddress
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct UpgradedEvent{
+        event_id: u256,
+        event_name: felt252,
+        paid_amount: u256,
+        event_type: EventType
+    }
+
 
     #[derive(Drop, starknet::Event)]
     struct EventAttendanceMark {
