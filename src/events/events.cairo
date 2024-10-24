@@ -30,7 +30,8 @@ pub mod Events {
         >, // map <(event_id, attendeeAddress), EventRegistration>
         paid_events: Map<
             (ContractAddress, u256), u256
-        > // map<(attendeeAddress, event_id), amount_paid>
+        >, // map<(attendeeAddress, event_id), amount_paid>
+        registered_attendees: Map<u256, u256> // map<event_id, registered_attendees_count>
     }
 
     // event
@@ -135,7 +136,7 @@ pub mod Events {
         fn register_for_event(ref self: ContractState, event_id: u256, event_fee: u256) {}
         fn end_event_registration(
             ref self: ContractState, event_id: u256
-        ) {} // only owner can closed an event 
+        ) {} // only owner can closed an event
         fn rsvp_for_event(ref self: ContractState, event_id: u256) {}
         fn upgrade_event(ref self: ContractState, event_id: u256, paid_amount: u256) {}
 
@@ -168,6 +169,9 @@ pub mod Events {
                 organizer: get_caller_address()
             };
             event_attendance_details
+        }
+        fn registered_attendees(self: @ContractState, event_id: u256) -> u256 {
+            self.registered_attendees.entry(event_id).read()
         }
     }
 }
