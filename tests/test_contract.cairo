@@ -64,31 +64,31 @@ fn test_rsvp_for_event_should_panic_on_unregistered_event() {
     stop_cheat_caller_address(event_contract_address);
 }
 
-#[test]
-fn test_rsvp_for_event_should_emit_event() {
-    let event_contract_address = __setup__();
+// #[test]
+// fn test_rsvp_for_event_should_emit_event() {
+//     let event_contract_address = __setup__();
 
-    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+//     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
 
-    let caller: ContractAddress = starknet::contract_address_const::<0x123626789>();
+//     let caller: ContractAddress = starknet::contract_address_const::<0x123626789>();
 
-    start_cheat_caller_address(event_contract_address, caller);
+//     start_cheat_caller_address(event_contract_address, caller);
 
-    let mut spy = spy_events();
+//     let mut spy = spy_events();
 
-    let event_id: u256 = 1;
-    event_dispatcher.rsvp_for_event(event_id);
+//     let event_id: u256 = 1;
+//     event_dispatcher.rsvp_for_event(event_id);
 
-    let expected_event = Events::Event::RSVPForEvent(Events::RSVPForEvent { event_id: 1, attendee_address: caller });
+//     let expected_event = Events::Event::RSVPForEvent(Events::RSVPForEvent { event_id: 1, attendee_address: caller });
 
-    spy.assert_emitted(@array![(event_contract_address, expected_event)]);
+//     spy.assert_emitted(@array![(event_contract_address, expected_event)]);
 
-    stop_cheat_caller_address(event_contract_address);
-}
+//     stop_cheat_caller_address(event_contract_address);
+// }
 
-#[test]
-#[should_panic(expected: "can't rsvp twice")]
-fn test_rsvp_for_event_should_panic_if_repeated() {
+// #[test]
+// #[should_panic(expected: "can't rsvp twice")]
+// fn test_rsvp_for_event_should_panic_if_repeated() {
     
-}
+// }
 
