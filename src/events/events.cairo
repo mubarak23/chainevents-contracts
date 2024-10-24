@@ -132,15 +132,19 @@ pub mod Events {
         fn event_owner(self: @ContractState, event_id: u256) -> ContractAddress {
             get_caller_address()
         }
+        
         fn attendee_event_details(self: @ContractState, event_id: u256) -> EventRegistration {
+            let event_details = self.event_details.read(event_id);
+
             let event_attendance_details = EventRegistration {
                 attendee_address: get_caller_address(),
-                amount_paid: 34,
+                amount_paid: event_details.paid_amount,
                 has_rsvp: true,
                 nft_contract_address: get_caller_address(),
                 nft_token_id: 34,
-                organizer: get_caller_address()
+                organizer: event_details.organizer
             };
+
             event_attendance_details
         }
     }
