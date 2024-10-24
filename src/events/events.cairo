@@ -36,7 +36,7 @@ pub mod Events {
     // event
     #[event]
     #[derive(Drop, starknet::Event)]
-    enum Event {
+    pub enum Event {
         NewEventAdded: NewEventAdded,
         RegisteredForEvent: RegisteredForEvent,
         EventAttendanceMark: EventAttendanceMark,
@@ -70,7 +70,6 @@ pub mod Events {
     #[derive(Drop, starknet::Event)]
     pub struct RSVPForEvent {
         pub event_id: u256,
-        pub event_name: felt252,
         pub attendee_address: ContractAddress
     }
 
@@ -132,11 +131,31 @@ pub mod Events {
                 );
             event_id
         }
+
         fn register_for_event(ref self: ContractState, event_id: u256, event_fee: u256) {}
+        
         fn end_event_registration(
             ref self: ContractState, event_id: u256
         ) {} // only owner can closed an event 
-        fn rsvp_for_event(ref self: ContractState, event_id: u256) {}
+
+        fn rsvp_for_event(ref self: ContractState, event_id: u256) {
+            let caller = get_caller_address();
+
+            let attendee_event_details = self.attendee_event_details.entry((event_id, caller)).read();
+
+            assert!(attendee_event_details.attendee_address == caller, "rsvp only for registered event");
+            assert!(attendee_event_details.has_rsvp == false, "can't rsvp twice");
+
+            self.attendee_event_details.entry((event_id, caller)).has_rsvp.write(true);
+
+            self.emit(
+                RSVPForEvent {
+                    event_id,
+                    attendee_address: caller,
+                }
+            );
+        }
+
         fn upgrade_event(ref self: ContractState, event_id: u256, paid_amount: u256) {}
 
         // GETTER FUNCTION
