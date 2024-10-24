@@ -36,7 +36,7 @@ pub mod Events {
     // event
     #[event]
     #[derive(Drop, starknet::Event)]
-    enum Event {
+    pub enum Event {
         NewEventAdded: NewEventAdded,
         RegisteredForEvent: RegisteredForEvent,
         EventAttendanceMark: EventAttendanceMark,
@@ -131,7 +131,9 @@ pub mod Events {
                 );
             event_id
         }
+
         fn register_for_event(ref self: ContractState, event_id: u256, event_fee: u256) {}
+        
         fn end_event_registration(
             ref self: ContractState, event_id: u256
         ) {} // only owner can closed an event 
