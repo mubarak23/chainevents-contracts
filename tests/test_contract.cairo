@@ -45,3 +45,11 @@ fn test_add_event() {
     stop_cheat_caller_address(event_contract_address);
 }
 
+#[test]
+fn test_registered_attendees() {
+    let event_contract_address = __setup__();
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+    let event_id = event_dispatcher.add_event("bitcoin dev meetup", "Dan Marna road");
+    assert(event_id == 1, 'Event was not created');
+    event_dispatcher.register_for_event(1, 0);
+}
