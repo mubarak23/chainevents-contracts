@@ -99,6 +99,7 @@ pub mod Events {
         fn add_event(ref self: ContractState, name: ByteArray, location: ByteArray) -> u256 {
             let event_owner = get_caller_address();
             let event_id = self.event_counts.read() + 1;
+            self.event_counts.write(event_id);
             let event_name = name.clone();
             let event_location = location.clone();
 
