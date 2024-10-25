@@ -193,9 +193,13 @@ pub mod Events {
             };
             event_details
         }
+
         fn event_owner(self: @ContractState, event_id: u256) -> ContractAddress {
-            get_caller_address()
+            let event_owners = self.event_owners.read(event_id);
+
+            event_owners
         }
+        
         fn attendee_event_details(self: @ContractState, event_id: u256) -> EventRegistration {
             let event_attendance_details = EventRegistration {
                 attendee_address: get_caller_address(),
