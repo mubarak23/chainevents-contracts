@@ -3,7 +3,7 @@ pub mod Events {
     use core::num::traits::zero::Zero;
     use chainevents_contracts::base::types::{EventDetails, EventRegistration, EventType};
     use chainevents_contracts::base::errors::Errors::{
-        ZERO_ADDRESS_OWNER, ZERO_ADDRESS_CALLER, NOT_OWNER
+        ZERO_ADDRESS_OWNER, ZERO_ADDRESS_CALLER, NOT_OWNER, CLOSED_EVENT, ALREADY_REGISTERED
     };
     use chainevents_contracts::interfaces::IEvent::IEvent;
     use core::starknet::{
@@ -56,7 +56,7 @@ pub mod Events {
     #[derive(Drop, starknet::Event)]
     pub struct RegisteredForEvent {
         pub event_id: u256,
-        pub event_name: felt252,
+        pub event_name: ByteArray,
         pub user_address: ContractAddress
     }
 
@@ -120,6 +120,8 @@ pub mod Events {
             // save event owner
             self.event_owners.write(event_id, event_owner);
 
+            // register oraganizer for event
+
             // emit event
             self
                 .emit(
@@ -132,7 +134,45 @@ pub mod Events {
                 );
             event_id
         }
-        fn register_for_event(ref self: ContractState, event_id: u256, event_fee: u256) {}
+
+        fn register_for_event(ref self: ContractState, event_id: u256) {
+            let caller = get_caller_address();
+
+            let _event = self.event_details.read(event_id);
+
+            let _attendee_registration = self.attendee_event_details.read((event_id, caller));
+
+            assert(caller.is_non_zero(), ZERO_ADDRESS_CALLER);
+
+            assert(!_attendee_registration.has_rsvp, ALREADY_REGISTERED);
+
+            assert(!_event.is_closed, CLOSED_EVENT);
+
+            let _attendee_event_details = EventRegistration {
+                attendee_address: caller,
+                amount_paid: 0,
+                has_rsvp: false,
+                nft_contract_address: caller, // nft contract address needed
+                nft_token_id: 0,
+                organizer: _event.organizer
+            };
+
+            self.attendee_event_details.write((event_id, caller), _attendee_event_details);
+
+            self.event_registrations.write(caller, event_id);
+
+            // update event attendees count.
+
+            self
+                .emit(
+                    RegisteredForEvent {
+                        event_id: event_id,
+                        event_name: _event.name,
+                        user_address: caller
+                    }
+                );
+        }
+
         fn end_event_registration(
             ref self: ContractState, event_id: u256
         ) {} // only owner can closed an event 
