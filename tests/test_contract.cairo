@@ -68,7 +68,7 @@ fn test_register_for_event() {
 
 #[test]
 #[should_panic(expected: 'rsvp only for registered event')]
-fn test_should_panic_on_rsvp_for_event_that_was_unregistered() {
+fn test_should_panic_on_rsvp_for_event_that_was_not_registered_for() {
     let event_contract_address = __setup__();
 
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
@@ -109,6 +109,35 @@ fn test_rsvp_for_event_should_emit_event_on_success() {
 
     let expected_event = Events::Event::RSVPForEvent(Events::RSVPForEvent { event_id: 1, attendee_address: caller });
     spy.assert_emitted(@array![(event_contract_address, expected_event)]);
+
+    stop_cheat_caller_address(event_contract_address);
+}
+
+#[test]
+#[should_panic(expected: 'rsvp already exist')]
+fn test_should_panic_on_rsvp_for_event_twice() {
+    let event_contract_address = __setup__();
+
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    // USER_ONE adds event
+    start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
+    let event_id = event_dispatcher.add_event("bitcoin dev meetup", "Dan Marna road");
+    assert(event_id == 1, 'Event was not created');
+    stop_cheat_caller_address(event_contract_address);
+
+    // Use a new user(caller) to register for event & rsvp for event
+    let caller: ContractAddress = starknet::contract_address_const::<0x123626789>();
+
+    start_cheat_caller_address(event_contract_address, caller);
+
+    event_dispatcher.register_for_event(event_id);
+    
+    // first rsvp for event
+    event_dispatcher.rsvp_for_event(event_id);
+
+    // second rsvp for the same event: should panic
+    event_dispatcher.rsvp_for_event(event_id);
 
     stop_cheat_caller_address(event_contract_address);
 }
