@@ -46,7 +46,7 @@ fn test_add_event() {
 }
 
 #[test]
-fn test_register_for_event () {
+fn test_register_for_event() {
     let event_contract_address = __setup__();
 
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };

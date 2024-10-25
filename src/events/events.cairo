@@ -166,9 +166,7 @@ pub mod Events {
             self
                 .emit(
                     RegisteredForEvent {
-                        event_id: event_id,
-                        event_name: _event.name,
-                        user_address: caller
+                        event_id: event_id, event_name: _event.name, user_address: caller
                     }
                 );
         }
