@@ -71,7 +71,7 @@ fn test_event_count_increase() {
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
 
     start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
-    
+
     let initial_event_id = event_dispatcher.add_event("Blockchain Conference", "Tech Park");
     assert(initial_event_id == 1, 'First event ID incorrect');
 
@@ -88,22 +88,21 @@ fn test_event_emission() {
 
     start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
 
-    let event_name = "Devcon";
-    let event_location = "Barcelona";
-    let expected_event_id = 1;
+    // Add event with string literals
+    let event_id = event_dispatcher.add_event("Devcon", "Barcelona");
+    assert(event_id == 1, 'Event ID mismatch');
 
-    let event_id = event_dispatcher.add_event(event_name, event_location);
+    // Get event details and compare them separately
+    let event_details = event_dispatcher.event_details(event_id);
 
-    // Check if event ID is correct
-    assert(event_id == expected_event_id, 'Event ID mismatch');
+    // Compare each field independently
+    let name_matches = event_details.name == "Devcon";
+    let location_matches = event_details.location == "Barcelona";
 
-    // Verify event details
-    let emitted_event = event_dispatcher.event_details(event_id);
-    
-    assert(emitted_event.name == event_name, 'Event name mismatch');
-    // assert(emitted_event.location == event_location, 'Event location mismatch');
-    // assert(emitted_event.event_id == event_id, 'Event ID mismatch in details');
-    // assert(!emitted_event.is_closed, 'Event should not be closed');
-    
+    assert(name_matches, 'Event name mismatch');
+    assert(location_matches, 'Event location mismatch');
+    assert(event_details.event_id == event_id, 'Event ID mismatch in details');
+    assert(!event_details.is_closed, 'Event should not be closed');
+
     stop_cheat_caller_address(event_contract_address);
 }
