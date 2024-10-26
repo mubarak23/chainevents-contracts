@@ -3,7 +3,8 @@ pub mod Events {
     use core::num::traits::zero::Zero;
     use chainevents_contracts::base::types::{EventDetails, EventRegistration, EventType};
     use chainevents_contracts::base::errors::Errors::{
-        ZERO_ADDRESS_OWNER, ZERO_ADDRESS_CALLER, NOT_OWNER
+        ZERO_ADDRESS_OWNER, ZERO_ADDRESS_CALLER, NOT_OWNER, CLOSED_EVENT, ALREADY_REGISTERED,
+        NOT_REGISTERED, ALREADY_RSVP
     };
     use chainevents_contracts::interfaces::IEvent::IEvent;
     use core::starknet::{
@@ -36,10 +37,13 @@ pub mod Events {
     // event
     #[event]
     #[derive(Drop, starknet::Event)]
-    enum Event {
+    pub enum Event {
         NewEventAdded: NewEventAdded,
         RegisteredForEvent: RegisteredForEvent,
-        EventAttendanceMark: EventAttendanceMark
+        EventAttendanceMark: EventAttendanceMark,
+        UpgradedEvent: UpgradedEvent,
+        EndEventRegistration: EndEventRegistration,
+        RSVPForEvent: RSVPForEvent
     }
 
     #[derive(Drop, starknet::Event)]
@@ -51,16 +55,38 @@ pub mod Events {
     }
 
     #[derive(Drop, starknet::Event)]
-    struct RegisteredForEvent {
-        event_id: u256,
-        event_name: felt252,
-        user_address: ContractAddress
+    pub struct RegisteredForEvent {
+        pub event_id: u256,
+        pub event_name: ByteArray,
+        pub user_address: ContractAddress
     }
 
     #[derive(Drop, starknet::Event)]
-    struct EventAttendanceMark {
-        event_id: u256,
-        user_address: ContractAddress
+    pub struct EndEventRegistration {
+        pub event_id: u256,
+        pub event_name: felt252,
+        pub event_owner: ContractAddress
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct RSVPForEvent {
+        pub event_id: u256,
+        pub attendee_address: ContractAddress
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct UpgradedEvent {
+        pub event_id: u256,
+        pub event_name: felt252,
+        pub paid_amount: u256,
+        pub event_type: EventType
+    }
+
+
+    #[derive(Drop, starknet::Event)]
+    pub struct EventAttendanceMark {
+        pub event_id: u256,
+        pub user_address: ContractAddress
     }
 
     #[constructor]
@@ -73,6 +99,7 @@ pub mod Events {
         fn add_event(ref self: ContractState, name: ByteArray, location: ByteArray) -> u256 {
             let event_owner = get_caller_address();
             let event_id = self.event_counts.read() + 1;
+            self.event_counts.write(event_id);
             let event_name = name.clone();
             let event_location = location.clone();
 
@@ -94,6 +121,8 @@ pub mod Events {
             // save event owner
             self.event_owners.write(event_id, event_owner);
 
+            // register oraganizer for event
+
             // emit event
             self
                 .emit(
@@ -106,11 +135,63 @@ pub mod Events {
                 );
             event_id
         }
-        fn register_for_event(ref self: ContractState, event_id: u256, event_fee: u256) {}
+
+        fn register_for_event(ref self: ContractState, event_id: u256) {
+            let caller = get_caller_address();
+
+            let _event = self.event_details.read(event_id);
+
+            let _attendee_registration = self.attendee_event_details.read((event_id, caller));
+
+            assert(caller.is_non_zero(), ZERO_ADDRESS_CALLER);
+
+            assert(!_attendee_registration.has_rsvp, ALREADY_REGISTERED);
+
+            assert(!_event.is_closed, CLOSED_EVENT);
+
+            let _attendee_event_details = EventRegistration {
+                attendee_address: caller,
+                amount_paid: 0,
+                has_rsvp: false,
+                nft_contract_address: caller, // nft contract address needed
+                nft_token_id: 0,
+                organizer: _event.organizer
+            };
+
+            self.attendee_event_details.write((event_id, caller), _attendee_event_details);
+
+            self.event_registrations.write(caller, event_id);
+
+            // update event attendees count.
+
+            self
+                .emit(
+                    RegisteredForEvent {
+                        event_id: event_id, event_name: _event.name, user_address: caller
+                    }
+                );
+        }
+
         fn end_event_registration(
             ref self: ContractState, event_id: u256
         ) {} // only owner can closed an event 
-        fn rsvp_for_event(ref self: ContractState, event_id: u256) {}
+
+        fn rsvp_for_event(ref self: ContractState, event_id: u256) {
+            let caller = get_caller_address();
+
+            let attendee_event_details = self
+                .attendee_event_details
+                .entry((event_id, caller))
+                .read();
+
+            assert(attendee_event_details.attendee_address == caller, NOT_REGISTERED);
+            assert(attendee_event_details.has_rsvp == false, ALREADY_RSVP);
+
+            self.attendee_event_details.entry((event_id, caller)).has_rsvp.write(true);
+
+            self.emit(RSVPForEvent { event_id, attendee_address: caller, });
+        }
+
         fn upgrade_event(ref self: ContractState, event_id: u256, paid_amount: u256) {}
 
         // GETTER FUNCTION
@@ -129,8 +210,11 @@ pub mod Events {
             };
             event_details
         }
+
         fn event_owner(self: @ContractState, event_id: u256) -> ContractAddress {
-            get_caller_address()
+            let event_owners = self.event_owners.read(event_id);
+
+            event_owners
         }
         
         fn attendee_event_details(self: @ContractState, event_id: u256) -> EventRegistration {
