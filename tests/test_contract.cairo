@@ -14,6 +14,9 @@ use snforge_std::{
 
 use chainevents_contracts::interfaces::IEvent::{IEventDispatcher, IEventDispatcherTrait};
 
+use chainevents_contracts::events::events::Events;
+use chainevents_contracts::base::types::EventType;
+
 
 const USER_ONE: felt252 = 'JOE';
 const USER_TWO: felt252 = 'DOE';
@@ -99,5 +102,46 @@ fn test_end_event_registration_already_closed() {
     event_dispatcher.end_event_registration(event_id);
     
     event_dispatcher.end_event_registration(event_id);
+    stop_cheat_caller_address(event_contract_address);
+}
+
+#[test]
+fn test_event_details() {
+    let event_contract_address = __setup__();
+
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+    let user_address: ContractAddress = USER_ONE.try_into().unwrap();
+
+    start_cheat_caller_address(event_contract_address, user_address);
+
+    // Add event
+    let event_id = event_dispatcher.add_event("bitcoin dev meetup", "Dan Marna road");
+    assert(event_id == 1, 'Event was not created');
+
+    // Retrieve event details
+    let event_details = event_dispatcher.event_details(event_id);
+
+    // Compare each field independently
+    let id_matches = event_details.event_id == 1;
+    let name_matches = event_details.name == "bitcoin dev meetup";
+    let location_matches = event_details.location == "Dan Marna road";
+    let organizer_matches = event_details.organizer == user_address;
+    let total_register_matches = event_details.total_register == 1;
+    let total_attendees_matches = event_details.total_attendees == 2;
+    let event_type_matches = event_details.event_type == EventType::Free;
+    let is_closed_matches = !event_details.is_closed;
+    let paid_amount_matches = event_details.paid_amount == 0;
+
+    // Assert each condition
+    assert(id_matches, 'Event ID mismatch');
+    assert(name_matches, 'Event name mismatch');
+    assert(location_matches, 'Event location mismatch');
+    assert(organizer_matches, 'Organizer mismatch');
+    assert(total_register_matches, 'Total register should be 1');
+    assert(total_attendees_matches, 'Total attendees should be 2');
+    assert(event_type_matches, 'Event type mismatch');
+    assert(is_closed_matches, 'Event should not be closed');
+    assert(paid_amount_matches, 'Paid amount should be 0');
+
     stop_cheat_caller_address(event_contract_address);
 }
