@@ -65,8 +65,10 @@ fn test_event_registration() {
     let event_details = event_dispatcher.event_details(event_id);
     let attendee_registration_details = event_dispatcher.attendee_event_details(event_id);
 
-
-    assert(attendee_registration_details.attendee_address == user_two_address, 'attendee_address mismatch');
+    assert(
+        attendee_registration_details.attendee_address == user_two_address,
+        'attendee_address mismatch'
+    );
     assert(attendee_registration_details.amount_paid == 0, 'amount_paid mismatch');
     assert(attendee_registration_details.has_rsvp == false, 'has_rsvp mismatch');
     assert(
@@ -74,7 +76,9 @@ fn test_event_registration() {
         'nft_contract_address mismatch'
     );
     assert(attendee_registration_details.nft_token_id == 0, 'nft_token_id mismatch');
-    assert(attendee_registration_details.organizer == event_details.organizer, 'organizer mismatch');
+    assert(
+        attendee_registration_details.organizer == event_details.organizer, 'organizer mismatch'
+    );
     stop_cheat_caller_address(event_contract_address);
 }
 
