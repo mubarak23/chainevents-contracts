@@ -1,9 +1,12 @@
 #[starknet::contract]
 pub mod Events {
     use core::num::traits::zero::Zero;
+    use core::clone::Clone;
+
+
     use chainevents_contracts::base::types::{EventDetails, EventRegistration, EventType};
     use chainevents_contracts::base::errors::Errors::{
-        ZERO_ADDRESS_OWNER, ZERO_ADDRESS_CALLER, NOT_OWNER
+        ZERO_ADDRESS_OWNER, ZERO_ADDRESS_CALLER, NOT_OWNER, INVALID_EVENT, EVENT_CLOSED
     };
     use chainevents_contracts::interfaces::IEvent::IEvent;
     use core::starknet::{
@@ -63,7 +66,7 @@ pub mod Events {
     #[derive(Drop, starknet::Event)]
     pub struct EndEventRegistration {
         pub event_id: u256,
-        pub event_name: felt252,
+        pub event_name: ByteArray,
         pub event_owner: ContractAddress
     }
 
@@ -133,9 +136,42 @@ pub mod Events {
             event_id
         }
         fn register_for_event(ref self: ContractState, event_id: u256, event_fee: u256) {}
-        fn end_event_registration(
-            ref self: ContractState, event_id: u256
-        ) {} // only owner can closed an event 
+
+        fn end_event_registration(ref self: ContractState, event_id: u256) {
+            let caller = get_caller_address();
+            let event_owner = self.event_owners.read(event_id);
+            
+            // Read event details
+            let event_details = self.event_details.read(event_id);
+
+            assert(!event_owner.is_zero(), INVALID_EVENT);
+            assert(caller == event_owner, NOT_OWNER);
+            assert(!event_details.is_closed, EVENT_CLOSED);
+
+            // Create new EventDetails with updated is_closed field
+            let updated_event_details = EventDetails {
+                event_id: event_details.event_id,
+                name: event_details.name.clone(),
+                location: event_details.location,
+                organizer: event_details.organizer,
+                total_register: event_details.total_register,
+                total_attendees: event_details.total_attendees,
+                event_type: event_details.event_type,
+                is_closed: true,
+                paid_amount: event_details.paid_amount,
+            };
+
+            // Write the updated event details
+            self.event_details.write(event_id, updated_event_details);
+
+            self.emit(EndEventRegistration {
+                event_id,
+                event_name: event_details.name,
+                event_owner: caller,
+            });
+        }
+    } // only owner can closed an event 
+
         fn rsvp_for_event(ref self: ContractState, event_id: u256) {}
         fn upgrade_event(ref self: ContractState, event_id: u256, paid_amount: u256) {}
 
@@ -170,4 +206,4 @@ pub mod Events {
             event_attendance_details
         }
     }
-}
+
