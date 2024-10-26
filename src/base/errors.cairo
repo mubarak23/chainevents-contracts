@@ -4,4 +4,9 @@ pub mod Errors {
     pub const NOT_OWNER: felt252 = 'Caller Not Owner';
     pub const INVALID_EVENT: felt252 = 'Invalid event';
     pub const EVENT_CLOSED: felt252 = 'Event closed';
+
+    pub const CLOSED_EVENT: felt252 = 'Event is closed';
+    pub const ALREADY_REGISTERED: felt252 = 'Caller already registered';
+    pub const NOT_REGISTERED: felt252 = 'rsvp only for registered event';
+    pub const ALREADY_RSVP: felt252 = 'rsvp already exist';
 }
