@@ -201,7 +201,7 @@ pub mod Events {
                 event_id: 1,
                 name: event_detail.name,
                 location: event_detail.location,
-                organizer: get_caller_address(),
+                organizer: event_detail.organizer,
                 total_register: 1,
                 total_attendees: 2,
                 event_type: EventType::Free,
@@ -216,20 +216,17 @@ pub mod Events {
 
             event_owners
         }
-        
+
         fn attendee_event_details(self: @ContractState, event_id: u256) -> EventRegistration {
-            let event_details = self.event_details.read(event_id);
+            let register_event_id = self.event_registrations.read(get_caller_address());
 
-            let event_attendance_details = EventRegistration {
-                attendee_address: get_caller_address(),
-                amount_paid: event_details.paid_amount,
-                has_rsvp: true,
-                nft_contract_address: get_caller_address(),
-                nft_token_id: 34,
-                organizer: event_details.organizer
-            };
+            assert(event_id == register_event_id, 'different event_id');
 
-            event_attendance_details
+            let attendee_event_details = self
+                .attendee_event_details
+                .read((event_id, get_caller_address()));
+
+            attendee_event_details
         }
     }
 }
