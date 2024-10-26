@@ -145,7 +145,7 @@ fn test_should_panic_on_rsvp_for_event_twice() {
 }
 
 
-[test]
+#[test]
 fn test_event_count_increase() {
     let event_contract_address = __setup__();
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
