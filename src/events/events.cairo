@@ -216,7 +216,7 @@ pub mod Events {
 
             event_owners
         }
-        
+
         fn attendee_event_details(self: @ContractState, event_id: u256) -> EventRegistration {
             let event_attendance_details = EventRegistration {
                 attendee_address: get_caller_address(),
