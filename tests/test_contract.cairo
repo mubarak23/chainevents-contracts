@@ -186,3 +186,21 @@ fn test_event_emission() {
 
     stop_cheat_caller_address(event_contract_address);
 }
+
+#[test]
+#[available_gas(2000000)]
+fn test_event_owner() {
+    let event_contract_address = __setup__();
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    let user_address: ContractAddress = USER_ONE.try_into().unwrap();
+
+    start_cheat_caller_address(event_contract_address, user_address);
+
+    let event_id = event_dispatcher.add_event("bitcoin dev meetup", "Dan Marna road");
+    assert(event_id == 1, 'Event was not created');
+
+    let retrieved_owner = event_dispatcher.event_owner(1);
+    assert(retrieved_owner == user_address, 'Wrong owner returned');
+    stop_cheat_caller_address(event_contract_address);
+}
