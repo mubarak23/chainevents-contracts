@@ -16,7 +16,6 @@ use chainevents_contracts::interfaces::IEvent::{IEventDispatcher, IEventDispatch
 use chainevents_contracts::events::events::Events;
 use chainevents_contracts::base::types::EventType;
 
-
 const USER_ONE: felt252 = 'JOE';
 const USER_TWO: felt252 = 'DOE';
 
@@ -48,6 +47,40 @@ fn test_add_event() {
 }
 
 #[test]
+fn test_event_registration() {
+    let event_contract_address = __setup__();
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    let user_one_address: ContractAddress = USER_ONE.try_into().unwrap();
+    start_cheat_caller_address(event_contract_address, user_one_address);
+
+    let event_id = event_dispatcher.add_event("ethereum dev meetup", "Main street 101");
+    assert(event_id == 1, 'Event was not created');
+
+    stop_cheat_caller_address(event_contract_address);
+
+    let user_two_address: ContractAddress = USER_TWO.try_into().unwrap();
+    start_cheat_caller_address(event_contract_address, user_two_address);
+
+    event_dispatcher.register_for_event(event_id);
+    let event_details = event_dispatcher.event_details(event_id);
+    let attendee_registration_details = event_dispatcher.attendee_event_details(event_id);
+
+    assert(
+        attendee_registration_details.attendee_address == user_two_address,
+        'attendee_address mismatch'
+    );
+    assert(
+        attendee_registration_details.nft_contract_address == user_two_address,
+        'nft_contract_address mismatch'
+    );
+    assert(attendee_registration_details.nft_token_id == 0, 'nft_token_id mismatch');
+    assert(
+        attendee_registration_details.organizer == event_details.organizer, 'organizer mismatch'
+    );
+    stop_cheat_caller_address(event_contract_address);
+}
+
 fn test_register_for_event() {
     let event_contract_address = __setup__();
 
