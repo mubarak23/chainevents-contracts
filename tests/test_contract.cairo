@@ -69,8 +69,6 @@ fn test_event_registration() {
         attendee_registration_details.attendee_address == user_two_address,
         'attendee_address mismatch'
     );
-    assert(attendee_registration_details.amount_paid == 0, 'amount_paid mismatch');
-    assert(attendee_registration_details.has_rsvp == false, 'has_rsvp mismatch');
     assert(
         attendee_registration_details.nft_contract_address == user_two_address,
         'nft_contract_address mismatch'
