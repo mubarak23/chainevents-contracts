@@ -3,7 +3,8 @@ pub mod Events {
     use core::num::traits::zero::Zero;
     use chainevents_contracts::base::types::{EventDetails, EventRegistration, EventType};
     use chainevents_contracts::base::errors::Errors::{
-        ZERO_ADDRESS_OWNER, ZERO_ADDRESS_CALLER, NOT_OWNER, CLOSED_EVENT, ALREADY_REGISTERED, NOT_REGISTERED, ALREADY_RSVP
+        ZERO_ADDRESS_OWNER, ZERO_ADDRESS_CALLER, NOT_OWNER, CLOSED_EVENT, ALREADY_REGISTERED,
+        NOT_REGISTERED, ALREADY_RSVP
     };
     use chainevents_contracts::interfaces::IEvent::IEvent;
     use core::starknet::{
@@ -177,19 +178,17 @@ pub mod Events {
         fn rsvp_for_event(ref self: ContractState, event_id: u256) {
             let caller = get_caller_address();
 
-            let attendee_event_details = self.attendee_event_details.entry((event_id, caller)).read();
+            let attendee_event_details = self
+                .attendee_event_details
+                .entry((event_id, caller))
+                .read();
 
             assert(attendee_event_details.attendee_address == caller, NOT_REGISTERED);
             assert(attendee_event_details.has_rsvp == false, ALREADY_RSVP);
 
             self.attendee_event_details.entry((event_id, caller)).has_rsvp.write(true);
 
-            self.emit(
-                RSVPForEvent {
-                    event_id,
-                    attendee_address: caller,
-                }
-            );
+            self.emit(RSVPForEvent { event_id, attendee_address: caller, });
         }
 
         fn upgrade_event(ref self: ContractState, event_id: u256, paid_amount: u256) {}

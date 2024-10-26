@@ -9,7 +9,7 @@ use starknet::{ContractAddress};
 
 use snforge_std::{
     declare, start_cheat_caller_address, stop_cheat_caller_address, ContractClassTrait,
-    DeclareResultTrait,  spy_events, EventSpyAssertionsTrait,
+    DeclareResultTrait, spy_events, EventSpyAssertionsTrait,
 };
 
 use chainevents_contracts::interfaces::IEvent::{IEventDispatcher, IEventDispatcherTrait};
@@ -104,10 +104,12 @@ fn test_rsvp_for_event_should_emit_event_on_success() {
     event_dispatcher.register_for_event(event_id);
 
     let mut spy = spy_events();
-    
+
     event_dispatcher.rsvp_for_event(event_id);
 
-    let expected_event = Events::Event::RSVPForEvent(Events::RSVPForEvent { event_id: 1, attendee_address: caller });
+    let expected_event = Events::Event::RSVPForEvent(
+        Events::RSVPForEvent { event_id: 1, attendee_address: caller }
+    );
     spy.assert_emitted(@array![(event_contract_address, expected_event)]);
 
     stop_cheat_caller_address(event_contract_address);
@@ -132,7 +134,7 @@ fn test_should_panic_on_rsvp_for_event_twice() {
     start_cheat_caller_address(event_contract_address, caller);
 
     event_dispatcher.register_for_event(event_id);
-    
+
     // first rsvp for event
     event_dispatcher.rsvp_for_event(event_id);
 
