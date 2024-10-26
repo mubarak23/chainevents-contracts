@@ -6,10 +6,9 @@ pub mod Events {
 
     use chainevents_contracts::base::types::{EventDetails, EventRegistration, EventType};
     use chainevents_contracts::base::errors::Errors::{
-        ZERO_ADDRESS_OWNER, ZERO_ADDRESS_CALLER, NOT_OWNER, INVALID_EVENT, EVENT_CLOSED
+        ZERO_ADDRESS_OWNER, ZERO_ADDRESS_CALLER, NOT_OWNER, INVALID_EVENT, EVENT_CLOSED,
 
-        ZERO_ADDRESS_OWNER, ZERO_ADDRESS_CALLER, NOT_OWNER, CLOSED_EVENT, ALREADY_REGISTERED,
-        NOT_REGISTERED, ALREADY_RSVP
+    
     };
     use chainevents_contracts::interfaces::IEvent::IEvent;
     use core::starknet::{
