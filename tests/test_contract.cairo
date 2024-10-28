@@ -305,13 +305,11 @@ fn test_not_owner_end_event_registration() {
     let event_contract_address = __setup__();
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
 
-    // USER_ONE adds event
     start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
     let event_id = event_dispatcher.add_event("bitcoin dev meetup", "Dan Marna road");
     assert(event_id == 1, 'Event was not created');
     stop_cheat_caller_address(event_contract_address);
 
-    // USER_TWO tries to end the event registration
     start_cheat_caller_address(event_contract_address, USER_TWO.try_into().unwrap());
     event_dispatcher.end_event_registration(event_id);
     stop_cheat_caller_address(event_contract_address);
@@ -323,15 +321,13 @@ fn test_end_event_registration_for_invalid_event() {
     let event_contract_address = __setup__();
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
 
-    // USER_ONE adds event
     start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
     let event_id = event_dispatcher.add_event("bitcoin dev meetup", "Dan Marna road");
     assert(event_id == 1, 'Event was not created');
     stop_cheat_caller_address(event_contract_address);
 
-    // Try to end registration for an invalid event ID
     start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
-    event_dispatcher.end_event_registration(2); // Invalid event ID
+    event_dispatcher.end_event_registration(2);
     stop_cheat_caller_address(event_contract_address);
 }
 
@@ -340,15 +336,12 @@ fn test_event_details_after_end_event_registration() {
     let event_contract_address = __setup__();
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
 
-    // USER_ONE adds event
     start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
     let event_id = event_dispatcher.add_event("bitcoin dev meetup", "Dan Marna road");
     assert(event_id == 1, 'Event was not created');
 
-    // End event registration
     event_dispatcher.end_event_registration(event_id);
 
-    // Verify event details
     let event_details = event_dispatcher.event_details(event_id);
     assert(event_details.is_closed, 'Event should be closed');
     assert(event_details.event_id == 1, 'Event ID mismatch');

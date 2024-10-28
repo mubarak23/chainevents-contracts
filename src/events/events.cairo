@@ -172,9 +172,6 @@ pub mod Events {
                 );
         }
 
-        // fn end_event_registration(
-        //     ref self: ContractState, event_id: u256
-        // ) {} // only owner can closed an event 
 
         fn end_event_registration(ref self: ContractState, event_id: u256) {
             let caller = get_caller_address();
