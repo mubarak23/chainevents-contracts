@@ -31,7 +31,8 @@ pub mod Events {
         >, // map <(event_id, attendeeAddress), EventRegistration>
         paid_events: Map<
             (ContractAddress, u256), u256
-        > // map<(attendeeAddress, event_id), amount_paid>
+        >, // map<(attendeeAddress, event_id), amount_paid>
+        registered_attendees: Map<u256, u256> // map<event_id, registered_attendees_count>
     }
 
     // event
@@ -163,6 +164,7 @@ pub mod Events {
             self.event_registrations.write(caller, event_id);
 
             // update event attendees count.
+            self.registered_attendees.write(event_id, self.registered_attendees.read(event_id) + 1);
 
             self
                 .emit(
@@ -174,7 +176,7 @@ pub mod Events {
 
         fn end_event_registration(
             ref self: ContractState, event_id: u256
-        ) {} // only owner can closed an event 
+        ) {} // only owner can closed an event
 
         fn rsvp_for_event(ref self: ContractState, event_id: u256) {
             let caller = get_caller_address();
@@ -227,6 +229,13 @@ pub mod Events {
                 .read((event_id, get_caller_address()));
 
             attendee_event_details
+        }
+
+        fn attendees_registered(self: @ContractState, event_id: u256) -> u256 {
+            let caller = get_caller_address();
+            let event_owner = self.event_owners.read(event_id);
+            assert(caller == event_owner, NOT_OWNER);
+            self.registered_attendees.read(event_id)
         }
     }
 }
