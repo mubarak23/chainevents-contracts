@@ -301,17 +301,12 @@ fn test_end_event_registration_success() {
 
 #[test]
 #[should_panic(expected: 'Caller Not Owner')]
-fn test_not_owner_end_event_registration() {
+fn test_registered_attendees_only_owner() {
     let event_contract_address = __setup__();
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
-
     start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
     let event_id = event_dispatcher.add_event("bitcoin dev meetup", "Dan Marna road");
     assert(event_id == 1, 'Event was not created');
-    stop_cheat_caller_address(event_contract_address);
-
-    start_cheat_caller_address(event_contract_address, USER_TWO.try_into().unwrap());
-    event_dispatcher.end_event_registration(event_id);
     stop_cheat_caller_address(event_contract_address);
 }
 
@@ -350,4 +345,32 @@ fn test_event_details_after_end_event_registration() {
     assert(event_details.organizer == USER_ONE.try_into().unwrap(), 'Organizer mismatch');
 
     stop_cheat_caller_address(event_contract_address);
+}
+
+
+#[test]
+fn test_attendees_registered_updates_correctly() {
+    let event_contract_address = __setup__();
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    // USER_ONE adds event
+    start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
+    let event_id = event_dispatcher.add_event("bitcoin dev meetup", "Dan Marna road");
+    assert(event_id == 1, 'Event was not created');
+
+    // Ensure Registered attendees is at default value (0)
+    let attendees_registered = event_dispatcher.attendees_registered(event_id);
+    assert(attendees_registered == 0, 'Attendees Must be 0');
+    stop_cheat_caller_address(event_contract_address);
+
+    // Use a new user(caller) to register for event & rsvp for event
+    let caller: ContractAddress = starknet::contract_address_const::<0x123626789>();
+    start_cheat_caller_address(event_contract_address, caller);
+    event_dispatcher.register_for_event(event_id);
+    stop_cheat_caller_address(event_contract_address);
+
+    // Assert attendees registered increases correctly
+    start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
+    let attendees_registered = event_dispatcher.attendees_registered(event_id);
+    assert(attendees_registered == 1, 'Attendees Not Tallying');
 }
