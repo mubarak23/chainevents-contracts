@@ -4,7 +4,7 @@ pub mod Events {
     use chainevents_contracts::base::types::{EventDetails, EventRegistration, EventType};
     use chainevents_contracts::base::errors::Errors::{
         ZERO_ADDRESS_OWNER, ZERO_ADDRESS_CALLER, NOT_OWNER, CLOSED_EVENT, ALREADY_REGISTERED,
-        NOT_REGISTERED, ALREADY_RSVP
+        NOT_REGISTERED, ALREADY_RSVP, INVALID_EVENT, EVENT_CLOSED
     };
     use chainevents_contracts::interfaces::IEvent::IEvent;
     use core::starknet::{
@@ -65,7 +65,7 @@ pub mod Events {
     #[derive(Drop, starknet::Event)]
     pub struct EndEventRegistration {
         pub event_id: u256,
-        pub event_name: felt252,
+        pub event_name: ByteArray,
         pub event_owner: ContractAddress
     }
 
@@ -109,8 +109,8 @@ pub mod Events {
                 name: event_name,
                 location: event_location,
                 organizer: event_owner,
-                total_register: 0,
-                total_attendees: 0,
+                total_register: 1,
+                total_attendees: 2,
                 event_type: EventType::Free,
                 is_closed: false,
                 paid_amount: 0,
@@ -174,9 +174,37 @@ pub mod Events {
                 );
         }
 
-        fn end_event_registration(
-            ref self: ContractState, event_id: u256
-        ) {} // only owner can closed an event
+
+        fn end_event_registration(ref self: ContractState, event_id: u256) {
+            let caller = get_caller_address();
+            let event_owner = self.event_owners.read(event_id);
+            assert(!event_owner.is_zero(), INVALID_EVENT);
+            assert(caller == event_owner, NOT_OWNER);
+
+            let event_details = self.event_details.read(event_id);
+            assert(!event_details.is_closed, EVENT_CLOSED);
+
+            let updated_event_details = EventDetails {
+                event_id: event_details.event_id,
+                name: event_details.name.clone(),
+                location: event_details.location,
+                organizer: event_details.organizer,
+                total_register: event_details.total_register,
+                total_attendees: event_details.total_attendees,
+                event_type: event_details.event_type,
+                is_closed: true, // Set to true
+                paid_amount: event_details.paid_amount,
+            };
+
+            self.event_details.write(event_id, updated_event_details);
+
+            self
+                .emit(
+                    EndEventRegistration {
+                        event_id, event_name: event_details.name, event_owner: caller,
+                    }
+                );
+        }
 
         fn rsvp_for_event(ref self: ContractState, event_id: u256) {
             let caller = get_caller_address();
@@ -199,18 +227,18 @@ pub mod Events {
         // GETTER FUNCTION
         fn event_details(self: @ContractState, event_id: u256) -> EventDetails {
             let event_detail = self.event_details.read(event_id);
-            let event_details = EventDetails {
-                event_id: 1,
-                name: event_detail.name,
-                location: event_detail.location,
-                organizer: event_detail.organizer,
-                total_register: 1,
-                total_attendees: 2,
-                event_type: EventType::Free,
-                is_closed: false,
-                paid_amount: 0,
-            };
-            event_details
+            // let event_details = EventDetails {
+            //     event_id: 1,
+            //     name: event_detail.name,
+            //     location: event_detail.location,
+            //     organizer: event_detail.organizer,
+            //     total_register: 1,
+            //     total_attendees: 2,
+            //     event_type: EventType::Free,
+            //     is_closed: false,
+            //     paid_amount: 0,
+            // };
+            event_detail
         }
 
         fn event_owner(self: @ContractState, event_id: u256) -> ContractAddress {
