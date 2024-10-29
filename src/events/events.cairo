@@ -227,8 +227,6 @@ pub mod Events {
         // GETTER FUNCTION
         fn event_details(self: @ContractState, event_id: u256) -> EventDetails {
             let event_detail = self.event_details.read(event_id);
-            // let event_detail = self.event_details.read(event_id);
-
             // let event_details = EventDetails {
             //     event_id: 1,
             //     name: event_detail.name,
