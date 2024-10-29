@@ -183,6 +183,7 @@ pub mod Events {
 
             let event_details = self.event_details.read(event_id);
             assert(!event_details.is_closed, EVENT_CLOSED);
+            
 
             let updated_event_details = EventDetails {
                 event_id: event_details.event_id,
