@@ -330,7 +330,6 @@ fn test_attendees_registered_updates_correctly() {
 
 #[test]
 fn test_end_event_registration_success() {
-
     let event_contract_address = __setup__();
 
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
@@ -338,7 +337,7 @@ fn test_end_event_registration_success() {
     start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
     let event_id = event_dispatcher.add_event("bitcoin dev meetup", "Dan Marna road");
     assert(event_id == 1, 'Event was not created');
-    
+
     let event_details = event_dispatcher.event_details(event_id);
     event_dispatcher.end_event_registration(event_id);
     let event_details = event_dispatcher.event_details(event_id);
@@ -402,7 +401,6 @@ fn test_event_details_after_end_event_registration() {
 
 #[test]
 fn test_end_event_emission() {
-
     let event_contract_address = __setup__();
 
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
@@ -410,7 +408,7 @@ fn test_end_event_emission() {
     start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
     let event_id = event_dispatcher.add_event("bitcoin dev meetup", "Dan Marna road");
     assert(event_id == 1, 'Event was not created');
-    
+
     let event_details = event_dispatcher.event_details(event_id);
     event_dispatcher.end_event_registration(event_id);
     let event_details = event_dispatcher.event_details(event_id);
