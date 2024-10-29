@@ -375,6 +375,3 @@ fn test_event_details_after_end_event_registration() {
 
     stop_cheat_caller_address(event_contract_address);
 }
-
-
-
