@@ -78,7 +78,7 @@ pub mod Events {
     #[derive(Drop, starknet::Event)]
     pub struct UpgradedEvent {
         pub event_id: u256,
-        pub event_name: felt252,
+        pub event_name: ByteArray,
         pub paid_amount: u256,
         pub event_type: EventType
     }
@@ -222,7 +222,26 @@ pub mod Events {
             self.emit(RSVPForEvent { event_id, attendee_address: caller, });
         }
 
-        fn upgrade_event(ref self: ContractState, event_id: u256, paid_amount: u256) {}
+        fn upgrade_event(ref self: ContractState, event_id: u256, paid_amount: u256) {
+            let caller = get_caller_address();
+            let event_owner = self.event_owners.read(event_id);
+            assert(caller == event_owner, NOT_OWNER);
+            let mut event_details = self.event_details.read(event_id);
+            event_details.event_type = EventType::Paid;
+            event_details.paid_amount = paid_amount;
+            self.event_details.write(event_id, event_details.clone());
+            self
+                .emit(
+                    UpgradedEvent {
+                        event_id: event_id,
+                        event_name: event_details.name,
+                        paid_amount: paid_amount,
+                        event_type: EventType::Paid,
+                    }
+                );
+        }
+
+        
 
         // GETTER FUNCTION
         fn event_details(self: @ContractState, event_id: u256) -> EventDetails {
@@ -258,6 +277,8 @@ pub mod Events {
 
             attendee_event_details
         }
+
+       
 
         fn attendees_registered(self: @ContractState, event_id: u256) -> u256 {
             let caller = get_caller_address();

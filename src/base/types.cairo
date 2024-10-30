@@ -29,5 +29,5 @@ pub struct EventRegistration {
 #[derive(Debug, Drop, Serde, starknet::Store, Clone, PartialEq)]
 pub enum EventType {
     Free,
-    PAID
+    Paid
 }
