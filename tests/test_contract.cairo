@@ -426,39 +426,39 @@ fn test_end_event_emission() {
     stop_cheat_caller_address(event_contract_address);
 }
 
-#[test]
-fn test_upgrade_event() {
-    let event_contract_address = __setup__();
-    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
-   
-//     let event_name = "Blockchain Meetup".to_byte_array();
-//     let event_location = "Web3 Hub".to_byte_array();
-//     let event_owner = get_caller_address();
+// #[test]
+// fn test_upgrade_event() {
+//     // Deploy contract and initialize the event dispatcher
+//     let event_contract_address = __setup__();
+//     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+//     let event_name = "Blockchain Meetup";
+//     let event_location = "Web3 Hub";
 //     let paid_amount = u256::from(100); // Test paid amount
 
-//     let event_id = contract.add_event(event_name.clone(), event_location.clone());
+//     start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
+//     let event_id = event_dispatcher.add_event(event_name, event_location);
+//     stop_cheat_caller_address(event_contract_address);
 
-//     let initial_event_details = contract.event_details(event_id);
+   
+//     let initial_event_details = event_dispatcher.event_details(event_id);
 //     assert_eq!(initial_event_details.event_type, EventType::Free, "Initial event type should be Free.");
 //     assert_eq!(initial_event_details.paid_amount, u256::from(0), "Initial paid amount should be 0.");
 
-//     contract.upgrade_event(event_id, paid_amount);
+    
+//     start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
+//     event_dispatcher.upgrade_event(event_id, paid_amount);
+//     stop_cheat_caller_address(event_contract_address);
 
-//     let updated_event_details = contract.event_details(event_id);
    
+//     let updated_event_details = event_dispatcher.event_details(event_id);
 //     assert_eq!(updated_event_details.event_type, EventType::Paid, "Event type should be updated to Paid.");
 //     assert_eq!(updated_event_details.paid_amount, paid_amount, "Paid amount should match the value provided during the upgrade.");
-    
-//     assert_eq!(contract.event_owner(event_id), event_owner, "Caller should remain the event owner after upgrade.");
 
+//     let mut spy = spy_events();
+//     let emitted_event = Events::Event::UpgradedEvent(
+//         Events::UpgradedEvent { event_id, paid_amount }
+//     );
+//     spy.assert_emitted(@array![(event_contract_address, emitted_event)]);
+// }
 
-//     let emitted_event = contract.events().pop().unwrap();
-//     if let Events::Event::UpgradedEvent(upgrade_event) = emitted_event {
-//         assert_eq!(upgrade_event.event_id, event_id, "Event ID should match the upgraded event ID.");
-//         assert_eq!(upgrade_event.event_name, event_name, "Event name should match.");
-//         assert_eq!(upgrade_event.paid_amount, paid_amount, "Paid amount should match the upgraded amount.");
-//         assert_eq!(upgrade_event.event_type, EventType::Paid, "Event type should be Paid in the emitted event.");
-//     } else {
-//         panic!("Expected UpgradedEvent to be emitted.");
-//     }
-}
