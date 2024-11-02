@@ -426,39 +426,34 @@ fn test_end_event_emission() {
     stop_cheat_caller_address(event_contract_address);
 }
 
-// #[test]
-// fn test_upgrade_event() {
-//     // Deploy contract and initialize the event dispatcher
-//     let event_contract_address = __setup__();
-//     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+#[test]
+fn test_upgrade_event() {
+    let event_contract_address = __setup__();
 
-//     let event_name = "Blockchain Meetup";
-//     let event_location = "Web3 Hub";
-//     let paid_amount = u256::from(100); // Test paid amount
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
 
-//     start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
-//     let event_id = event_dispatcher.add_event(event_name, event_location);
-//     stop_cheat_caller_address(event_contract_address);
+    start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
+    let event_id = event_dispatcher.add_event("bitcoin dev meetup", "Dan Marna road");
+    assert(event_id == 1, 'Event was not created');
+    event_dispatcher.upgrade_event(event_id, 20);
+    let event_details = event_dispatcher.event_details(event_id);
+    assert(event_details.event_type == EventType::Paid, 'Event was Not Upgraded');
+    assert(event_details.paid_amount == 20, 'Event was Not Upgraded');
+    stop_cheat_caller_address(event_contract_address);
+}
 
-   
-//     let initial_event_details = event_dispatcher.event_details(event_id);
-//     assert_eq!(initial_event_details.event_type, EventType::Free, "Initial event type should be Free.");
-//     assert_eq!(initial_event_details.paid_amount, u256::from(0), "Initial paid amount should be 0.");
+#[test]
+#[should_panic(expected: 'Caller Not Owner')]
+fn test_upgrade_event_with_wrong_owner() {
+    let event_contract_address = __setup__();
 
-    
-//     start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
-//     event_dispatcher.upgrade_event(event_id, paid_amount);
-//     stop_cheat_caller_address(event_contract_address);
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
 
-   
-//     let updated_event_details = event_dispatcher.event_details(event_id);
-//     assert_eq!(updated_event_details.event_type, EventType::Paid, "Event type should be updated to Paid.");
-//     assert_eq!(updated_event_details.paid_amount, paid_amount, "Paid amount should match the value provided during the upgrade.");
+    start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
+    let event_id = event_dispatcher.add_event("bitcoin dev meetup", "Dan Marna road");
+    assert(event_id == 1, 'Event was not created');
+    stop_cheat_caller_address(event_contract_address);
 
-//     let mut spy = spy_events();
-//     let emitted_event = Events::Event::UpgradedEvent(
-//         Events::UpgradedEvent { event_id, paid_amount }
-//     );
-//     spy.assert_emitted(@array![(event_contract_address, emitted_event)]);
-// }
-
+    start_cheat_caller_address(event_contract_address, USER_TWO.try_into().unwrap());
+    event_dispatcher.upgrade_event(event_id, 20);
+}
