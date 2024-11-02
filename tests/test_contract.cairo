@@ -457,4 +457,3 @@ fn test_upgrade_event_with_wrong_owner() {
     start_cheat_caller_address(event_contract_address, USER_TWO.try_into().unwrap());
     event_dispatcher.upgrade_event(event_id, 20);
 }
-
