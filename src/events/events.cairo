@@ -241,22 +241,11 @@ pub mod Events {
                 );
         }
 
-        
 
         // GETTER FUNCTION
         fn event_details(self: @ContractState, event_id: u256) -> EventDetails {
             let event_detail = self.event_details.read(event_id);
-            // let event_details = EventDetails {
-            //     event_id: 1,
-            //     name: event_detail.name,
-            //     location: event_detail.location,
-            //     organizer: event_detail.organizer,
-            //     total_register: 1,
-            //     total_attendees: 2,
-            //     event_type: EventType::Free,
-            //     is_closed: false,
-            //     paid_amount: 0,
-            // };
+          
             event_detail
         }
 
@@ -278,7 +267,6 @@ pub mod Events {
             attendee_event_details
         }
 
-       
 
         fn attendees_registered(self: @ContractState, event_id: u256) -> u256 {
             let caller = get_caller_address();
