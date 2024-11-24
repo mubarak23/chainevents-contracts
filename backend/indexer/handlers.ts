@@ -6,6 +6,7 @@ import {
     RSVPForEvent 
 } from "./types";
 import { v1alpha2 as starknet } from '@apibara/starknet';
+import Event from "../models/Event.js";
 
 export async function handleNewEventAdded(event: starknet.IEvent) {
     console.log(event);
