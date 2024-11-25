@@ -8,12 +8,30 @@ pub mod Events {
     };
     use chainevents_contracts::interfaces::IEvent::IEvent;
     use core::starknet::{
-        ContractAddress, get_caller_address,
-        storage::{Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePathEntry}
+        ContractAddress, get_caller_address, ClassHash,
+        storage::{Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePathEntry,}
     };
+    use openzeppelin::access::ownable::OwnableComponent;
+    use openzeppelin_upgrades::UpgradeableComponent;
+    use openzeppelin_upgrades::interface::IUpgradeable;
+
+    component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
+    component!(path: UpgradeableComponent, storage: upgradeable, event: UpgradeableEvent);
+
+    #[abi(embed_v0)]
+    impl OwnableImpl = OwnableComponent::OwnableImpl<ContractState>;
+
+    impl OwnableInternalImpl = OwnableComponent::InternalImpl<ContractState>;
+
+    impl UpgradeableInternalImpl = UpgradeableComponent::InternalImpl<ContractState>;
+
 
     #[storage]
     struct Storage {
+        #[substorage(v0)]
+        ownable: OwnableComponent::Storage,
+        #[substorage(v0)]
+        upgradeable: UpgradeableComponent::Storage,
         // new_events: Map<u256, EventDetails>, // map <eventId, EventDetailsParams>
         // event_counts: u256,
         // registered_events: Map<
@@ -44,7 +62,11 @@ pub mod Events {
         EventAttendanceMark: EventAttendanceMark,
         UpgradedEvent: UpgradedEvent,
         EndEventRegistration: EndEventRegistration,
-        RSVPForEvent: RSVPForEvent
+        RSVPForEvent: RSVPForEvent,
+        #[flat]
+        OwnableEvent: OwnableComponent::Event,
+        #[flat]
+        UpgradeableEvent: UpgradeableComponent::Event,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -273,6 +295,11 @@ pub mod Events {
             let event_owner = self.event_owners.read(event_id);
             assert(caller == event_owner, NOT_OWNER);
             self.registered_attendees.read(event_id)
+        }
+
+        fn upgrade(ref self: ContractState, new_class_hash: ClassHash) {
+            self.ownable.assert_only_owner();
+            self.upgradeable.upgrade(new_class_hash);
         }
     }
 }
