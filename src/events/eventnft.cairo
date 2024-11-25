@@ -11,8 +11,7 @@ pub mod EventNFT {
     };
     use chainevents_contracts::interfaces::IEventNFT::IEventNFT;
     use chainevents_contracts::base::errors::Errors::{
-        ALREADY_MINTED, NOT_TOKEN_OWNER,
-        TOKEN_DOES_NOT_EXIST
+        ALREADY_MINTED, NOT_TOKEN_OWNER, TOKEN_DOES_NOT_EXIST
     };
 
     // *************************************************************************
