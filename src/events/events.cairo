@@ -11,6 +11,8 @@ pub mod Events {
         ContractAddress, get_caller_address,
         storage::{Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePathEntry}
     };
+    use openzeppelin_upgrades::UpgradeableComponent;
+    use openzeppelin_upgrades::interface::IUpgradeable;
 
     #[storage]
     struct Storage {
@@ -274,5 +276,14 @@ pub mod Events {
             assert(caller == event_owner, NOT_OWNER);
             self.registered_attendees.read(event_id)
         }
+
+            #[abi(embed_v0)]
+    impl UpgradeableImpl of IUpgradeable<ContractState> {
+        fn upgrade(ref self: ContractState, new_class_hash: ClassHash) {
+            self.ownable.assert_only_owner();
+            self.upgradeable.upgrade(new_class_hash);
+        }
+    }
+
     }
 }
