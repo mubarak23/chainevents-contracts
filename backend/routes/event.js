@@ -2,6 +2,7 @@ import express from "express";
 import {
   add,
   all,
+  fetchSingleEventDetails,
   search,
   view,
   viewByEventId,
@@ -17,4 +18,6 @@ router.get("/search", search);
 router.get("/id/:event_id", viewByEventId);
 router.get("/owner/:event_owner", viewByEventOwner);
 router.get("/:id", view);
+router.get("/:event_id/details", fetchSingleEventDetails);
+
 export default router;

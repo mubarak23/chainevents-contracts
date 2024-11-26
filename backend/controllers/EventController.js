@@ -72,3 +72,19 @@ export const viewByEventOwner = async (req, res) => {
     return failure(res, err.message, [], 500);
   }
 };
+
+export const fetchSingleEventDetails = async (req, res) => {
+  try {
+    const { event_id } = req.params;
+
+    const event = await Event.findByEventId(event_id);
+
+    if (!event) {
+      return failure(res, "Event not found", [], 404);
+    }
+
+    return success(res, "Event details fetched successfully", event, 200);
+  } catch (err) {
+    return failure(res, err.message, [], 500);
+  }
+};
