@@ -3,17 +3,35 @@ pub mod Events {
     use core::num::traits::zero::Zero;
     use chainevents_contracts::base::types::{EventDetails, EventRegistration, EventType};
     use chainevents_contracts::base::errors::Errors::{
-        ZERO_ADDRESS_OWNER, ZERO_ADDRESS_CALLER, NOT_OWNER, CLOSED_EVENT, ALREADY_REGISTERED,
-        NOT_REGISTERED, ALREADY_RSVP
+        ZERO_ADDRESS_CALLER, NOT_OWNER, CLOSED_EVENT, ALREADY_REGISTERED, NOT_REGISTERED,
+        ALREADY_RSVP, INVALID_EVENT, EVENT_CLOSED
     };
     use chainevents_contracts::interfaces::IEvent::IEvent;
     use core::starknet::{
         ContractAddress, get_caller_address, syscalls::deploy_syscall, ClassHash,
         storage::{Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePathEntry}
     };
+    use openzeppelin::access::ownable::OwnableComponent;
+    use openzeppelin_upgrades::UpgradeableComponent;
+    use openzeppelin_upgrades::interface::IUpgradeable;
+
+    component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
+    component!(path: UpgradeableComponent, storage: upgradeable, event: UpgradeableEvent);
+
+    #[abi(embed_v0)]
+    impl OwnableImpl = OwnableComponent::OwnableImpl<ContractState>;
+
+    impl OwnableInternalImpl = OwnableComponent::InternalImpl<ContractState>;
+
+    impl UpgradeableInternalImpl = UpgradeableComponent::InternalImpl<ContractState>;
+
 
     #[storage]
     struct Storage {
+        #[substorage(v0)]
+        ownable: OwnableComponent::Storage,
+        #[substorage(v0)]
+        upgradeable: UpgradeableComponent::Storage,
         // new_events: Map<u256, EventDetails>, // map <eventId, EventDetailsParams>
         // event_counts: u256,
         // registered_events: Map<
@@ -31,7 +49,8 @@ pub mod Events {
         >, // map <(event_id, attendeeAddress), EventRegistration>
         paid_events: Map<
             (ContractAddress, u256), u256
-        > // map<(attendeeAddress, event_id), amount_paid>
+        >, // map<(attendeeAddress, event_id), amount_paid>
+        registered_attendees: Map<u256, u256> // map<event_id, registered_attendees_count>
     }
 
     // event
@@ -43,7 +62,11 @@ pub mod Events {
         EventAttendanceMark: EventAttendanceMark,
         UpgradedEvent: UpgradedEvent,
         EndEventRegistration: EndEventRegistration,
-        RSVPForEvent: RSVPForEvent
+        RSVPForEvent: RSVPForEvent,
+        #[flat]
+        OwnableEvent: OwnableComponent::Event,
+        #[flat]
+        UpgradeableEvent: UpgradeableComponent::Event,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -64,7 +87,7 @@ pub mod Events {
     #[derive(Drop, starknet::Event)]
     pub struct EndEventRegistration {
         pub event_id: u256,
-        pub event_name: felt252,
+        pub event_name: ByteArray,
         pub event_owner: ContractAddress
     }
 
@@ -77,7 +100,7 @@ pub mod Events {
     #[derive(Drop, starknet::Event)]
     pub struct UpgradedEvent {
         pub event_id: u256,
-        pub event_name: felt252,
+        pub event_name: ByteArray,
         pub paid_amount: u256,
         pub event_type: EventType
     }
@@ -99,6 +122,7 @@ pub mod Events {
         fn add_event(ref self: ContractState, name: ByteArray, location: ByteArray) -> u256 {
             let event_owner = get_caller_address();
             let event_id = self.event_counts.read() + 1;
+            self.event_counts.write(event_id);
             let event_name = name.clone();
             let event_location = location.clone();
 
@@ -107,8 +131,8 @@ pub mod Events {
                 name: event_name,
                 location: event_location,
                 organizer: event_owner,
-                total_register: 0,
-                total_attendees: 0,
+                total_register: 1,
+                total_attendees: 2,
                 event_type: EventType::Free,
                 is_closed: false,
                 paid_amount: 0,
@@ -162,6 +186,7 @@ pub mod Events {
             self.event_registrations.write(caller, event_id);
 
             // update event attendees count.
+            self.registered_attendees.write(event_id, self.registered_attendees.read(event_id) + 1);
 
             self
                 .emit(
@@ -171,9 +196,37 @@ pub mod Events {
                 );
         }
 
-        fn end_event_registration(
-            ref self: ContractState, event_id: u256
-        ) {} // only owner can closed an event 
+
+        fn end_event_registration(ref self: ContractState, event_id: u256) {
+            let caller = get_caller_address();
+            let event_owner = self.event_owners.read(event_id);
+            assert(!event_owner.is_zero(), INVALID_EVENT);
+            assert(caller == event_owner, NOT_OWNER);
+
+            let event_details = self.event_details.read(event_id);
+            assert(!event_details.is_closed, EVENT_CLOSED);
+
+            let updated_event_details = EventDetails {
+                event_id: event_details.event_id,
+                name: event_details.name.clone(),
+                location: event_details.location,
+                organizer: event_details.organizer,
+                total_register: event_details.total_register,
+                total_attendees: event_details.total_attendees,
+                event_type: event_details.event_type,
+                is_closed: true, // Set to true
+                paid_amount: event_details.paid_amount,
+            };
+
+            self.event_details.write(event_id, updated_event_details);
+
+            self
+                .emit(
+                    EndEventRegistration {
+                        event_id, event_name: event_details.name, event_owner: caller,
+                    }
+                );
+        }
 
         fn rsvp_for_event(ref self: ContractState, event_id: u256) {
             let caller = get_caller_address();
@@ -191,37 +244,62 @@ pub mod Events {
             self.emit(RSVPForEvent { event_id, attendee_address: caller, });
         }
 
-        fn upgrade_event(ref self: ContractState, event_id: u256, paid_amount: u256) {}
+        fn upgrade_event(ref self: ContractState, event_id: u256, paid_amount: u256) {
+            let caller = get_caller_address();
+            let event_owner = self.event_owners.read(event_id);
+            assert(caller == event_owner, NOT_OWNER);
+            let mut event_details = self.event_details.read(event_id);
+            event_details.event_type = EventType::Paid;
+            event_details.paid_amount = paid_amount;
+            self.event_details.write(event_id, event_details.clone());
+            self
+                .emit(
+                    UpgradedEvent {
+                        event_id: event_id,
+                        event_name: event_details.name,
+                        paid_amount: paid_amount,
+                        event_type: EventType::Paid,
+                    }
+                );
+        }
+
 
         // GETTER FUNCTION
         fn event_details(self: @ContractState, event_id: u256) -> EventDetails {
             let event_detail = self.event_details.read(event_id);
-            let event_details = EventDetails {
-                event_id: 1,
-                name: event_detail.name,
-                location: event_detail.location,
-                organizer: get_caller_address(),
-                total_register: 1,
-                total_attendees: 2,
-                event_type: EventType::Free,
-                is_closed: false,
-                paid_amount: 0,
-            };
-            event_details
+
+            event_detail
         }
+
         fn event_owner(self: @ContractState, event_id: u256) -> ContractAddress {
-            get_caller_address()
+            let event_owners = self.event_owners.read(event_id);
+
+            event_owners
         }
+
         fn attendee_event_details(self: @ContractState, event_id: u256) -> EventRegistration {
-            let event_attendance_details = EventRegistration {
-                attendee_address: get_caller_address(),
-                amount_paid: 34,
-                has_rsvp: true,
-                nft_contract_address: get_caller_address(),
-                nft_token_id: 34,
-                organizer: get_caller_address()
-            };
-            event_attendance_details
+            let register_event_id = self.event_registrations.read(get_caller_address());
+
+            assert(event_id == register_event_id, 'different event_id');
+
+            let attendee_event_details = self
+                .attendee_event_details
+                .read((event_id, get_caller_address()));
+
+            attendee_event_details
+        }
+
+
+        fn attendees_registered(self: @ContractState, event_id: u256) -> u256 {
+            let caller = get_caller_address();
+            let event_owner = self.event_owners.read(event_id);
+            assert(caller == event_owner, NOT_OWNER);
+            self.registered_attendees.read(event_id)
+        }
+
+        fn upgrade(ref self: ContractState, new_class_hash: ClassHash) {
+            self.ownable.assert_only_owner();
+            self.upgradeable.upgrade(new_class_hash);
         }
     }
 
