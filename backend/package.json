@@ -11,6 +11,8 @@
     "migrate": "knex migrate:latest"
   },
   "dependencies": {
+    "@apibara/protocol": "^0.4.9",
+    "@apibara/starknet": "^0.5.0",
     "axios": "^1.7.7",
     "bcryptjs": "^2.4.3",
     "body-parser": "^1.20.3",
@@ -27,6 +29,7 @@
     "nodemon": "^3.1.4",
     "pg": "^8.13.0",
     "sqlite3": "^5.1.7",
+    "starknet": "^6.11.0",
     "validator": "^13.12.0"
   }
 }
