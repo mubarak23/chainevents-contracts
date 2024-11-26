@@ -8,7 +8,7 @@ pub mod Events {
     };
     use chainevents_contracts::interfaces::IEvent::IEvent;
     use core::starknet::{
-        ContractAddress, get_caller_address,
+        ContractAddress, get_caller_address, syscalls::deploy_syscall, ClassHash,
         storage::{Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePathEntry}
     };
 
@@ -222,6 +222,15 @@ pub mod Events {
                 organizer: get_caller_address()
             };
             event_attendance_details
+        }
+    }
+
+    #[generate_trait]
+    impl InternalImpl of InternalTrait {
+        fn deploy_event_nft(ref self: ContractState, event_nft_classhash: ClassHash) -> ContractAddress {
+            let mut payload = array![];
+            let (event_nft, _) = deploy_syscall(event_nft_classhash, 0, payload.span(), false).unwrap();
+            event_nft
         }
     }
 }
