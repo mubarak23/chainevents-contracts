@@ -227,9 +227,12 @@ pub mod Events {
 
     #[generate_trait]
     impl InternalImpl of InternalTrait {
-        fn deploy_event_nft(ref self: ContractState, event_nft_classhash: ClassHash) -> ContractAddress {
+        fn deploy_event_nft(
+            ref self: ContractState, event_nft_classhash: ClassHash
+        ) -> ContractAddress {
             let mut payload = array![];
-            let (event_nft, _) = deploy_syscall(event_nft_classhash, 0, payload.span(), false).unwrap();
+            let (event_nft, _) = deploy_syscall(event_nft_classhash, 0, payload.span(), false)
+                .unwrap();
             event_nft
         }
     }
