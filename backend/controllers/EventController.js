@@ -88,3 +88,31 @@ export const fetchSingleEventDetails = async (req, res) => {
     return failure(res, err.message, [], 500);
   }
 };
+
+export const fetchEventRegistrationAttendeesForOneEvent = async (req, res) => {
+  try {
+    const { event_id } = req.params;
+    const { page = 1, limit = 10 } = req.query;
+
+    const event = await Event.findByEventId(event_id);
+    
+    if (!event) {
+      return failure(res, "Event not found", [], 404);
+    }
+
+    const registrations = await Event.getRegisteredUsersWithPagination(
+      event_id,
+      page,
+      limit
+    );
+
+    return success(
+      res,
+      "Registered attendees fetched successfully",
+      registrations,
+      200
+    );
+  } catch (err) {
+    return failure(res, err.message, [], 500);
+  }
+};
