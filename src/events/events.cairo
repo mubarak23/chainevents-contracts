@@ -8,8 +8,9 @@ pub mod Events {
     };
     use chainevents_contracts::interfaces::IEvent::IEvent;
     use core::starknet::{
-        ContractAddress, get_caller_address, ClassHash,
-        storage::{Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePathEntry,}
+        ContractAddress, get_caller_address, syscalls::deploy_syscall, ClassHash,
+        get_block_timestamp,
+        storage::{Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePathEntry}
     };
     use openzeppelin::access::ownable::OwnableComponent;
     use openzeppelin_upgrades::UpgradeableComponent;
@@ -300,6 +301,26 @@ pub mod Events {
         fn upgrade(ref self: ContractState, new_class_hash: ClassHash) {
             self.ownable.assert_only_owner();
             self.upgradeable.upgrade(new_class_hash);
+        }
+    }
+
+    #[generate_trait]
+    impl InternalImpl of InternalTrait {
+        fn deploy_event_nft(
+            ref self: ContractState, event_nft_classhash: ClassHash, event_id: u256
+        ) -> ContractAddress {
+            let mut constructor_calldata: Array<felt252> = array![
+                event_id.low.into(), event_id.high.into()
+            ];
+
+            let (event_nft, _) = deploy_syscall(
+                event_nft_classhash,
+                get_block_timestamp().try_into().unwrap(),
+                constructor_calldata.span(),
+                false
+            )
+                .unwrap();
+            event_nft
         }
     }
 }
