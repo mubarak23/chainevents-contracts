@@ -51,7 +51,8 @@ pub mod Events {
         paid_events: Map<
             (ContractAddress, u256), u256
         >, // map<(attendeeAddress, event_id), amount_paid>
-        registered_attendees: Map<u256, u256> // map<event_id, registered_attendees_count>
+        registered_attendees: Map<u256, u256>, // map<event_id, registered_attendees_count>
+        attendee_event_registration_counts: Map<u256, u256>, // map<event_id, registration_count>
     }
 
     // event
@@ -189,6 +190,10 @@ pub mod Events {
             // update event attendees count.
             self.registered_attendees.write(event_id, self.registered_attendees.read(event_id) + 1);
 
+            // Update registered attendees count
+            let current_count = self.attendee_event_registration_counts.read(event_id);
+            self.attendee_event_registration_counts.write(event_id, current_count + 1);
+
             self
                 .emit(
                     RegisteredForEvent {
@@ -290,12 +295,18 @@ pub mod Events {
             attendee_event_details
         }
 
-
         fn attendees_registered(self: @ContractState, event_id: u256) -> u256 {
             let caller = get_caller_address();
             let event_owner = self.event_owners.read(event_id);
             assert(caller == event_owner, NOT_OWNER);
             self.registered_attendees.read(event_id)
+        }
+
+        fn event_registration_count(self: @ContractState, event_id: u256) -> u256 {
+            let caller = get_caller_address();
+            let event_owner = self.event_owners.read(event_id);
+            assert(caller == event_owner, NOT_OWNER);
+            self.attendee_event_registration_counts.read(event_id)
         }
 
         fn upgrade(ref self: ContractState, new_class_hash: ClassHash) {
