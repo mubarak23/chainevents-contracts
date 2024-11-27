@@ -16,6 +16,7 @@ pub trait IEvent<TContractState> {
     fn event_owner(self: @TContractState, event_id: u256) -> ContractAddress;
     fn attendee_event_details(self: @TContractState, event_id: u256) -> EventRegistration;
     fn attendees_registered(self: @TContractState, event_id: u256) -> u256;
+    fn event_registration_count(self: @TContractState, event_id: u256) -> u256;
 
     fn upgrade(ref self: TContractState, new_class_hash: ClassHash);
 }
