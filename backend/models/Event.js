@@ -62,6 +62,28 @@ class Event {
     const event = await db("events").where({ id }).del();
     return event;
   }
+  static async fetchAttendees(event_id, page = 1, per_page = 10) {
+    const offset = (page - 1) * per_page;
+
+    const attendees = await db("attendees")
+      .select("*")
+      .where("event_id", event_id)
+      .orderBy("created_at", "desc")
+      .limit(per_page)
+      .offset(offset);
+
+    const total = await db("attendees")
+      .where("event_id", event_id)
+      .count({ count: "*" })
+      .first();
+
+    return {
+      data: attendees,
+      total: total.count,
+      current: page,
+      pages: Math.ceil(total.count / per_page),
+    };
+  }
 }
 
 export default Event;

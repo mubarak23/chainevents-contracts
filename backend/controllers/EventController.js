@@ -72,3 +72,29 @@ export const viewByEventOwner = async (req, res) => {
     return failure(res, err.message, [], 500);
   }
 };
+
+import Event from "./../models/Event.js";
+import { success, failure } from "./../utils/response.js";
+
+export const fetchAttendeesByEventId = async (req, res) => {
+  try {
+    const { event_id } = req.params;
+    const { page = 1, limit = 10 } = req.query;
+
+   
+    const parsedPage = parseInt(page, 10);
+    const parsedLimit = parseInt(limit, 10);
+
+   
+    const attendees = await Event.fetchAttendees(event_id, parsedPage, parsedLimit);
+
+    if (!attendees || attendees.data.length === 0) {
+      return failure(res, "No attendees found for this event.", [], 404);
+    }
+
+    return success(res, "Attendees fetched successfully.", attendees, 200);
+  } catch (err) {
+    return failure(res, err.message, [], 500);
+  }
+};
+
