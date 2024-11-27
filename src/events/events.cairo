@@ -9,6 +9,7 @@ pub mod Events {
     use chainevents_contracts::interfaces::IEvent::IEvent;
     use core::starknet::{
         ContractAddress, get_caller_address, syscalls::deploy_syscall, ClassHash,
+        get_block_timestamp,
         storage::{Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePathEntry}
     };
     use openzeppelin::access::ownable::OwnableComponent;
@@ -306,10 +307,16 @@ pub mod Events {
     #[generate_trait]
     impl InternalImpl of InternalTrait {
         fn deploy_event_nft(
-            ref self: ContractState, event_nft_classhash: ClassHash
+            ref self: ContractState, event_nft_classhash: ClassHash, event_id: u256
         ) -> ContractAddress {
-            let mut payload = array![];
-            let (event_nft, _) = deploy_syscall(event_nft_classhash, 0, payload.span(), false)
+            let mut payload: Array<felt252> = array![event_id.low.into(), event_id.high.into()];
+
+            let (event_nft, _) = deploy_syscall(
+                event_nft_classhash,
+                get_block_timestamp().try_into().unwrap(),
+                payload.span(),
+                false
+            )
                 .unwrap();
             event_nft
         }
