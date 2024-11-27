@@ -309,7 +309,9 @@ pub mod Events {
         fn deploy_event_nft(
             ref self: ContractState, event_nft_classhash: ClassHash, event_id: u256
         ) -> ContractAddress {
-            let mut constructor_calldata: Array<felt252> = array![event_id.low.into(), event_id.high.into()];
+            let mut constructor_calldata: Array<felt252> = array![
+                event_id.low.into(), event_id.high.into()
+            ];
 
             let (event_nft, _) = deploy_syscall(
                 event_nft_classhash,
