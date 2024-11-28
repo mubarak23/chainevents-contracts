@@ -1,4 +1,7 @@
 #[starknet::contract]
+/// @title Events Management Contract
+/// @notice A contract for creating and managing events with registration and attendance tracking
+/// @dev Implements Ownable and Upgradeable components from OpenZeppelin
 pub mod Events {
     use core::num::traits::zero::Zero;
     use chainevents_contracts::base::types::{EventDetails, EventRegistration, EventType};
@@ -26,7 +29,8 @@ pub mod Events {
 
     impl UpgradeableInternalImpl = UpgradeableComponent::InternalImpl<ContractState>;
 
-
+    /// @notice Contract storage structure
+    /// @dev Contains mappings for event management and tracking
     #[storage]
     struct Storage {
         #[substorage(v0)]
@@ -55,7 +59,7 @@ pub mod Events {
         attendee_event_registration_counts: Map<u256, u256>, // map<event_id, registration_count>
     }
 
-    // event
+    /// @notice Events emitted by the contract
     #[event]
     #[derive(Drop, starknet::Event)]
     pub enum Event {
@@ -71,6 +75,7 @@ pub mod Events {
         UpgradeableEvent: UpgradeableComponent::Event,
     }
 
+    /// @notice Event emitted when a new event is created
     #[derive(Drop, starknet::Event)]
     pub struct NewEventAdded {
         pub name: ByteArray,
@@ -79,6 +84,7 @@ pub mod Events {
         pub event_owner: ContractAddress
     }
 
+    /// @notice Event emitted when a user registers for an event
     #[derive(Drop, starknet::Event)]
     pub struct RegisteredForEvent {
         pub event_id: u256,
@@ -86,6 +92,7 @@ pub mod Events {
         pub user_address: ContractAddress
     }
 
+    /// @notice Event emitted when registration for an event is closed
     #[derive(Drop, starknet::Event)]
     pub struct EndEventRegistration {
         pub event_id: u256,
@@ -93,12 +100,14 @@ pub mod Events {
         pub event_owner: ContractAddress
     }
 
+    /// @notice Event emitted when an attendee RSVPs for an event
     #[derive(Drop, starknet::Event)]
     pub struct RSVPForEvent {
         pub event_id: u256,
         pub attendee_address: ContractAddress
     }
 
+    /// @notice Event emitted when an event is upgraded (e.g., from free to paid)
     #[derive(Drop, starknet::Event)]
     pub struct UpgradedEvent {
         pub event_id: u256,
@@ -107,13 +116,14 @@ pub mod Events {
         pub event_type: EventType
     }
 
-
     #[derive(Drop, starknet::Event)]
     pub struct EventAttendanceMark {
         pub event_id: u256,
         pub user_address: ContractAddress
     }
 
+    /// @notice Initializes the Events contract
+    /// @dev Sets the initial event count to 0
     #[constructor]
     fn constructor(ref self: ContractState) {
         self.event_counts.write(0)
@@ -121,6 +131,10 @@ pub mod Events {
 
     #[abi(embed_v0)]
     impl EventsImpl of IEvent<ContractState> {
+        /// @notice Creates a new event
+        /// @param name Name of the event
+        /// @param location Location of the event
+        /// @return event_id The ID of the newly created event
         fn add_event(ref self: ContractState, name: ByteArray, location: ByteArray) -> u256 {
             let event_owner = get_caller_address();
             let event_id = self.event_counts.read() + 1;
@@ -161,6 +175,9 @@ pub mod Events {
             event_id
         }
 
+        /// @notice Registers a user for an event
+        /// @param event_id The ID of the event to register for
+        /// @dev Reverts if event is closed or user is already registered
         fn register_for_event(ref self: ContractState, event_id: u256) {
             let caller = get_caller_address();
 
@@ -203,6 +220,9 @@ pub mod Events {
         }
 
 
+        /// @notice Ends registration for an event
+        /// @param event_id The ID of the event to close registration for
+        /// @dev Only callable by event owner
         fn end_event_registration(ref self: ContractState, event_id: u256) {
             let caller = get_caller_address();
             let event_owner = self.event_owners.read(event_id);
@@ -234,6 +254,9 @@ pub mod Events {
                 );
         }
 
+        /// @notice Allows an attendee to RSVP for an event
+        /// @param event_id The ID of the event to RSVP for
+        /// @dev Reverts if user is not registered or has already RSVP'd
         fn rsvp_for_event(ref self: ContractState, event_id: u256) {
             let caller = get_caller_address();
 
@@ -250,6 +273,10 @@ pub mod Events {
             self.emit(RSVPForEvent { event_id, attendee_address: caller, });
         }
 
+        /// @notice Upgrades an event from free to paid
+        /// @param event_id The ID of the event to upgrade
+        /// @param paid_amount The amount to charge for the event
+        /// @dev Only callable by event owner
         fn upgrade_event(ref self: ContractState, event_id: u256, paid_amount: u256) {
             let caller = get_caller_address();
             let event_owner = self.event_owners.read(event_id);
@@ -270,19 +297,27 @@ pub mod Events {
         }
 
 
-        // GETTER FUNCTION
+        /// @notice Gets the details of an event
+        /// @param event_id The ID of the event to query
+        /// @return EventDetails struct containing event information
         fn event_details(self: @ContractState, event_id: u256) -> EventDetails {
             let event_detail = self.event_details.read(event_id);
 
             event_detail
         }
 
+        /// @notice Gets the owner of an event
+        /// @param event_id The ID of the event to query
+        /// @return Address of the event owner
         fn event_owner(self: @ContractState, event_id: u256) -> ContractAddress {
             let event_owners = self.event_owners.read(event_id);
 
             event_owners
         }
 
+        /// @notice Gets the registration details for an attendee
+        /// @param event_id The ID of the event to query
+        /// @return EventRegistration struct containing registration details
         fn attendee_event_details(self: @ContractState, event_id: u256) -> EventRegistration {
             let register_event_id = self.event_registrations.read(get_caller_address());
 
@@ -295,6 +330,10 @@ pub mod Events {
             attendee_event_details
         }
 
+        /// @notice Gets the number of registered attendees for an event
+        /// @param event_id The ID of the event to query
+        /// @return Number of registered attendees
+        /// @dev Only callable by event owner
         fn attendees_registered(self: @ContractState, event_id: u256) -> u256 {
             let caller = get_caller_address();
             let event_owner = self.event_owners.read(event_id);
@@ -302,6 +341,10 @@ pub mod Events {
             self.registered_attendees.read(event_id)
         }
 
+        /// @notice Gets the total registration count for an event
+        /// @param event_id The ID of the event to query
+        /// @return Total registration count
+        /// @dev Only callable by event owner
         fn event_registration_count(self: @ContractState, event_id: u256) -> u256 {
             let caller = get_caller_address();
             let event_owner = self.event_owners.read(event_id);
@@ -309,6 +352,9 @@ pub mod Events {
             self.attendee_event_registration_counts.read(event_id)
         }
 
+        /// @notice Upgrades the contract implementation
+        /// @param new_class_hash The new class hash to upgrade to
+        /// @dev Only callable by owner
         fn upgrade(ref self: ContractState, new_class_hash: ClassHash) {
             self.ownable.assert_only_owner();
             self.upgradeable.upgrade(new_class_hash);
@@ -317,6 +363,10 @@ pub mod Events {
 
     #[generate_trait]
     impl InternalImpl of InternalTrait {
+        /// @notice Deploys an NFT contract for an event
+        /// @param event_nft_classhash The class hash of the NFT contract to deploy
+        /// @param event_id The ID of the event to associate with the NFT
+        /// @return Address of the deployed NFT contract
         fn deploy_event_nft(
             ref self: ContractState, event_nft_classhash: ClassHash, event_id: u256
         ) -> ContractAddress {
