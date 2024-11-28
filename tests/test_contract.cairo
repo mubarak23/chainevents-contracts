@@ -470,20 +470,33 @@ fn test_unregister_for_event() {
 
     start_cheat_caller_address(event_contract_address, USER_TWO.try_into().unwrap());
     event_dispatcher.register_for_event(event_id);
-    
+
     let attendee_details = event_dispatcher.attendee_event_details(event_id);
-    assert(attendee_details.attendee_address == USER_TWO.try_into().unwrap(), 'User TWO should be registered');
+    assert(
+        attendee_details.attendee_address == USER_TWO.try_into().unwrap(),
+        'User TWO should be registered'
+    );
 
     event_dispatcher.unregister_for_event(event_id);
 
     let updated_attendee_details = event_dispatcher.attendee_event_details(event_id);
-    assert(updated_attendee_details.attendee_address != USER_TWO.try_into().unwrap(), 'User TWO should be unregistered');
+    assert(
+        updated_attendee_details.attendee_address != USER_TWO.try_into().unwrap(),
+        'User TWO should be unregistered'
+    );
 
     let mut spy = spy_events();
-    spy.assert_emitted(@array![(event_contract_address, Events::Event::UnregisteredEvent {
-        event_id,
-        user_address: USER_TWO.try_into().unwrap(),
-    })]);
-    
+    spy
+        .assert_emitted(
+            @array![
+                (
+                    event_contract_address,
+                    Events::Event::UnregisteredEvent {
+                        event_id, user_address: USER_TWO.try_into().unwrap(),
+                    }
+                )
+            ]
+        );
+
     stop_cheat_caller_address(event_contract_address);
 }

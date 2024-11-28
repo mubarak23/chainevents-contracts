@@ -271,19 +271,16 @@ pub mod Events {
 
         fn unregister_for_event(ref self: ContractState, event_id: u256) {
             let caller = get_caller_address();
-            
+
             let attendee_event_details = self.attendee_event_details.read((event_id, caller));
             assert(attendee_event_details.attendee_address == caller, NOT_REGISTERED);
-            
+
             self.attendee_event_details.remove((event_id, caller));
             self.event_registrations.remove(caller);
-            
+
             self.registered_attendees.write(event_id, self.registered_attendees.read(event_id) - 1);
-            
-            self.emit(UnregisteredEvent {
-                event_id,
-                user_address: caller,
-            });
+
+            self.emit(UnregisteredEvent { event_id, user_address: caller, });
         }
 
 
