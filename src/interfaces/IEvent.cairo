@@ -10,6 +10,7 @@ pub trait IEvent<TContractState> {
     ); // only owner can closed an event
     fn rsvp_for_event(ref self: TContractState, event_id: u256);
     fn upgrade_event(ref self: TContractState, event_id: u256, paid_amount: u256);
+    fn unregister_from_event(ref self: TContractState, event_id: u256);
 
     // GETTER FUNCTION
     fn event_details(self: @TContractState, event_id: u256) -> EventDetails;
