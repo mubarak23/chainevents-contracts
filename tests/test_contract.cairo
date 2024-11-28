@@ -457,3 +457,26 @@ fn test_upgrade_event_with_wrong_owner() {
     start_cheat_caller_address(event_contract_address, USER_TWO.try_into().unwrap());
     event_dispatcher.upgrade_event(event_id, 20);
 }
+
+#[test]
+fn test_unregister_from_event() {
+    let event_contract_address = __setup__();
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
+    let event_id = event_dispatcher.add_event("bitcoin dev meetup", "Dan Marna road");
+    stop_cheat_caller_address(event_contract_address);
+
+    start_cheat_caller_address(event_contract_address, USER_TWO.try_into().unwrap());
+    event_dispatcher.register_for_event(event_id);
+
+    let mut spy = spy_events();
+    event_dispatcher.unregister_from_event(event_id);
+
+    let expected_event = Events::Event::UnregisteredEvent(
+        Events::UnregisteredEvent { event_id, user_address: USER_TWO.try_into().unwrap() }
+    );
+    spy.assert_emitted(@array![(event_contract_address, expected_event)]);
+
+    stop_cheat_caller_address(event_contract_address);
+}
