@@ -65,6 +65,7 @@ pub mod Events {
         UpgradedEvent: UpgradedEvent,
         EndEventRegistration: EndEventRegistration,
         RSVPForEvent: RSVPForEvent,
+        UnregisteredEvent: UnregisteredEvent,
         #[flat]
         OwnableEvent: OwnableComponent::Event,
         #[flat]
@@ -84,6 +85,12 @@ pub mod Events {
         pub event_id: u256,
         pub event_name: ByteArray,
         pub user_address: ContractAddress
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct UnregisteredForEvent {
+        event_id: u256,
+        attendee_address: ContractAddress
     }
 
     #[derive(Drop, starknet::Event)]
@@ -272,15 +279,34 @@ pub mod Events {
         fn unregister_for_event(ref self: ContractState, event_id: u256) {
             let caller = get_caller_address();
 
-            let attendee_event_details = self.attendee_event_details.read((event_id, caller));
-            assert(attendee_event_details.attendee_address == caller, NOT_REGISTERED);
+            let _event = self.event_details.read(event_id);
+            let _attendee_registration = self.attendee_event_details.read((event_id, caller));
 
-            self.attendee_event_details.remove((event_id, caller));
-            self.event_registrations.remove(caller);
+            assert(caller.is_non_zero(), ZERO_ADDRESS_CALLER);
+            assert(_attendee_registration.has_rsvp, NOT_REGISTERED);
+            assert(!_event.is_closed, CLOSED_EVENT);
+
+            // Reset attendee registration
+            let empty_registration = EventRegistration {
+                attendee_address: caller,
+                amount_paid: 0,
+                has_rsvp: false,
+                nft_contract_address: caller,
+                nft_token_id: 0,
+                organizer: _event.organizer
+            };
+            self.attendee_event_details.write((event_id, caller), empty_registration);
 
             self.registered_attendees.write(event_id, self.registered_attendees.read(event_id) - 1);
+            let current_count = self.attendee_event_registration_counts.read(event_id);
+            self.attendee_event_registration_counts.write(event_id, current_count - 1);
 
-            self.emit(UnregisteredEvent { event_id, user_address: caller, });
+            self
+                .emit(
+                    UnregisteredForEvent {
+                        event_id: event_id, event_name: _event.name, user_address: caller
+                    }
+                );
         }
 
 
