@@ -457,3 +457,33 @@ fn test_upgrade_event_with_wrong_owner() {
     start_cheat_caller_address(event_contract_address, USER_TWO.try_into().unwrap());
     event_dispatcher.upgrade_event(event_id, 20);
 }
+
+#[test]
+fn test_unregister_for_event() {
+    let event_contract_address = __setup__();
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
+    let event_id = event_dispatcher.add_event("Blockchain Conference", "Tech Park");
+    assert(event_id == 1, 'Event was not created');
+    stop_cheat_caller_address(event_contract_address);
+
+    start_cheat_caller_address(event_contract_address, USER_TWO.try_into().unwrap());
+    event_dispatcher.register_for_event(event_id);
+    
+    let attendee_details = event_dispatcher.attendee_event_details(event_id);
+    assert(attendee_details.attendee_address == USER_TWO.try_into().unwrap(), 'User TWO should be registered');
+
+    event_dispatcher.unregister_for_event(event_id);
+
+    let updated_attendee_details = event_dispatcher.attendee_event_details(event_id);
+    assert(updated_attendee_details.attendee_address != USER_TWO.try_into().unwrap(), 'User TWO should be unregistered');
+
+    let mut spy = spy_events();
+    spy.assert_emitted(@array![(event_contract_address, Events::Event::UnregisteredEvent {
+        event_id,
+        user_address: USER_TWO.try_into().unwrap(),
+    })]);
+    
+    stop_cheat_caller_address(event_contract_address);
+}
