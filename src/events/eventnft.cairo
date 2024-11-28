@@ -1,3 +1,6 @@
+/// @title Event NFT Contract for managing event-specific non-fungible tokens
+/// @notice This contract implements functionality for minting and burning event-specific NFTs
+/// @dev Implements ERC721 and SRC5 standards using OpenZeppelin components
 #[starknet::contract]
 pub mod EventNFT {
     use starknet::{ContractAddress, get_block_timestamp};
@@ -28,6 +31,8 @@ pub mod EventNFT {
     // *************************************************************************
     //                             EVENTS
     // *************************************************************************
+    /// @notice Events emitted by the contract
+    /// @dev Combines ERC721 and SRC5 events
     #[event]
     #[derive(Drop, starknet::Event)]
     enum Event {
@@ -37,6 +42,8 @@ pub mod EventNFT {
         SRC5Event: SRC5Component::Event
     }
 
+    /// @notice Contract storage structure
+    /// @dev Includes ERC721 and SRC5 storage along with custom mappings
     #[storage]
     struct Storage {
         #[substorage(v0)]
@@ -49,6 +56,9 @@ pub mod EventNFT {
         event_id: u256
     }
 
+    /// @notice Initializes the EventNFT contract
+    /// @param event_id The unique identifier for the event this NFT collection represents
+    /// @dev Sets up the initial state of the contract
     #[constructor]
     fn constructor(ref self: ContractState, event_id: u256) {
         self.event_id.write(event_id);
@@ -58,6 +68,8 @@ pub mod EventNFT {
     impl eventnft of IEventNFT<ContractState> {
         /// @notice mints an event NFT
         /// @param address address of user trying to mint the event NFT token
+        /// @return The ID of the newly minted token
+        /// @dev Reverts if the user already has an NFT from this collection
         fn mint_nft(ref self: ContractState, user_address: ContractAddress) -> u256 {
             let balance = self.erc721.balance_of(user_address);
             assert(balance.is_zero(), ALREADY_MINTED);
@@ -73,7 +85,9 @@ pub mod EventNFT {
         }
 
         /// @notice burns a community NFT
-        /// @param address address of user trying to burn the community NFT token
+        /// @param user_address address of user trying to burn the community NFT token
+        /// @param token_id The ID of the token to burn
+        /// @dev Reverts if the token doesn't exist or if the user isn't the owner
         fn burn_nft(ref self: ContractState, user_address: ContractAddress, token_id: u256) {
             let user_token_id = self.user_token_id.read(user_address);
             assert(user_token_id == token_id, NOT_TOKEN_OWNER);
