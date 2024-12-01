@@ -1,7 +1,7 @@
 export const events = {
-    NewEventAdded: "NewEventAdded", //replace with event identify
-    RegisteredForEvent: "RegisteredForEvent",
-    EventAttendanceMark: "EventAttendanceMark",
-    EndEventRegistration: "EndEventRegistration",
-    RSVPForEvent: "RSVPForEvent"
+    NewEventAdded: "0x1", //replace with event identify
+    RegisteredForEvent: "0x2",
+    EventAttendanceMark: "0x3",
+    EndEventRegistration: "0x4",
+    RSVPForEvent: "0x5"
 };
