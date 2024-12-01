@@ -1,3 +1,5 @@
 target
 .snfoundry_cache/
 .snfoundry_cache/
+.DS_Store
+src/.DS_Store

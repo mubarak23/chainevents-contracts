@@ -138,12 +138,12 @@ class Event {
       .where({ event_id, is_active: true })
       .count("id as count")
       .first();
-    
+
     const rsvps = await db("event_rsvps")
       .where({ event_id })
       .count("id as count")
       .first();
-    
+
     const attendance = await db("event_attendance")
       .where({ event_id })
       .count("id as count")
@@ -152,7 +152,33 @@ class Event {
     return {
       registrations: registrations.count,
       rsvps: rsvps.count,
-      attendance: attendance.count
+      attendance: attendance.count,
+    };
+  }
+
+  static async getRegisteredUsersWithPagination(
+    event_id,
+    page = 1,
+    per_page = 10
+  ) {
+    const offset = (page - 1) * per_page;
+
+    const registeredUsers = await db("event_registrations")
+      .where({ event_id, is_active: true })
+      .select("user_address")
+      .limit(per_page)
+      .offset(offset);
+
+    const total = await db("event_registrations")
+      .where({ event_id, is_active: true })
+      .count({ count: "*" })
+      .first();
+
+    return {
+      data: registeredUsers,
+      total: total.count,
+      current: page,
+      pages: Math.ceil(total.count / per_page),
     };
   }
 }

@@ -9,4 +9,7 @@ pub mod Errors {
 
     pub const INVALID_EVENT: felt252 = 'Invalid event';
     pub const EVENT_CLOSED: felt252 = 'Event closed';
+    pub const ALREADY_MINTED: felt252 = 'Event NFT already minted';
+    pub const NOT_TOKEN_OWNER: felt252 = 'Not Token Owner';
+    pub const TOKEN_DOES_NOT_EXIST: felt252 = 'Token Does Not Exist';
 }
