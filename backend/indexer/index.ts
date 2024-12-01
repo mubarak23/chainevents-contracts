@@ -1,23 +1,23 @@
-import { StreamClient, v1alpha2 } from '@apibara/protocol';
+import { StreamClient, v1alpha2 } from "@apibara/protocol";
 import {
   FieldElement,
   Filter,
   v1alpha2 as starknet,
   StarkNetCursor,
-} from '@apibara/starknet';
-import { events } from '../config/events';
+} from "@apibara/starknet";
+import { events } from "../config/events";
 import {
   handleNewEventAdded,
   handleRegisteredForEvent,
   handleEventAttendanceMark,
   handleEndEventRegistration,
   handleRSVPForEvent,
-} from './handlers';
+} from "./handlers";
 
 const client = new StreamClient({
   url: process.env.DNA_CLIENT_URL!,
   clientOptions: {
-    'grpc.max_receive_message_length': 100 * 1024 * 1024, // 100MB
+    "grpc.max_receive_message_length": 100 * 1024 * 1024, // 100MB
   },
   token: process.env.DNA_TOKEN,
 });
@@ -26,18 +26,19 @@ const client = new StreamClient({
 const filter = Filter.create().withHeader({ weak: true });
 
 // Map your events to handlers
-const eventHandlers: Record<string, (event: starknet.IEvent) => Promise<void>> = {
-  [events.NewEventAdded]: handleNewEventAdded,
-  [events.RegisteredForEvent]: handleRegisteredForEvent,
-  [events.EventAttendanceMark]: handleEventAttendanceMark,
-  [events.EndEventRegistration]: handleEndEventRegistration,
-  [events.RSVPForEvent]: handleRSVPForEvent,
-};
+const eventHandlers: Record<string, (event: starknet.IEvent) => Promise<void>> =
+  {
+    [events.NewEventAdded]: handleNewEventAdded,
+    [events.RegisteredForEvent]: handleRegisteredForEvent,
+    [events.EventAttendanceMark]: handleEventAttendanceMark,
+    [events.EndEventRegistration]: handleEndEventRegistration,
+    [events.RSVPForEvent]: handleRSVPForEvent,
+  };
 
 // Add all events to filter
 Object.keys(eventHandlers).forEach((eventKey) => {
   filter.addEvent((event) =>
-    event.withKeys([FieldElement.fromBigInt(BigInt(eventKey))])
+    event.withKeys([FieldElement.fromBigInt(BigInt(eventKey))]),
   );
 });
 
@@ -51,7 +52,7 @@ export async function startIndexer() {
   });
 
   for await (const message of client) {
-    if (message.message === 'data') {
+    if (message.message === "data") {
       const { data } = message.data!;
       for (const item of data) {
         const block = starknet.Block.decode(item);
