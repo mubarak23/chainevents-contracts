@@ -5,17 +5,17 @@ import {
   v1alpha2 as starknet,
   StarkNetCursor,
 } from '@apibara/starknet';
-import { events } from '../config/events';
+import { events } from '../config/events.js';
 import {
   handleNewEventAdded,
   handleRegisteredForEvent,
   handleEventAttendanceMark,
   handleEndEventRegistration,
   handleRSVPForEvent,
-} from './handlers';
+} from './handlers.js';
 
 const client = new StreamClient({
-  url: process.env.DNA_CLIENT_URL!,
+  url: process.env.DNA_CLIENT_URL,
   clientOptions: {
     'grpc.max_receive_message_length': 100 * 1024 * 1024, // 100MB
   },
@@ -26,7 +26,7 @@ const client = new StreamClient({
 const filter = Filter.create().withHeader({ weak: true });
 
 // Map your events to handlers
-const eventHandlers: Record<string, (event: starknet.IEvent) => Promise<void>> = {
+const eventHandlers = {
   [events.NewEventAdded]: handleNewEventAdded,
   [events.RegisteredForEvent]: handleRegisteredForEvent,
   [events.EventAttendanceMark]: handleEventAttendanceMark,
@@ -52,12 +52,12 @@ export async function startIndexer() {
 
   for await (const message of client) {
     if (message.message === 'data') {
-      const { data } = message.data!;
+      const { data } = message.data;
       for (const item of data) {
         const block = starknet.Block.decode(item);
         for (const event of block.events) {
           if (!event.event) continue;
-          const eventKey = FieldElement.toHex(event.event.keys![0]);
+          const eventKey = FieldElement.toHex(event.event.keys[0]);
           const handler = eventHandlers[eventKey];
           if (handler) {
             await handler(event.event);
