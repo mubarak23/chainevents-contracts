@@ -3,14 +3,13 @@
  * @returns { Promise<void> }
  */
 export const up = function (knex) {
-  return knex.schema.createTable("event_attendance", function (table) {
-    table.increments("id").primary();
-    table.string("event_id").notNullable();
-    table.string("user_address").notNullable();
+  return knex.schema.createTable("event_nft", function (table) {
+    table.string("event_id").primary();
+    table.string("nft").notNullable();
     table.timestamps(true, true);
 
     // Composite unique constraint
-    table.unique(["event_id", "user_address"]);
+    table.unique(["event_id", "nft"]);
   });
 };
 
@@ -19,5 +18,5 @@ export const up = function (knex) {
  * @returns { Promise<void> }
  */
 export const down = function (knex) {
-  return knex.schema.dropTableIfExists("event_attendance");
+  return knex.schema.dropTableIfExists("event_rsvps");
 };

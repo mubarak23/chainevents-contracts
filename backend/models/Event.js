@@ -54,8 +54,9 @@ class Event {
   }
 
   static async update(id, data) {
-    const event = await db("events").where({ id }).update(data);
-    return event;
+    await db("events").where({ id }).update(data);
+
+    return await db("events").where({ id }).first();
   }
 
   static async delete(id) {
@@ -180,6 +181,31 @@ class Event {
       current: page,
       pages: Math.ceil(total.count / per_page),
     };
+  }
+
+  static async persistNFT(data) {
+    const [createdRecord] = await db("event_nft").insert(data).returning("*");
+    return createdRecord;
+  }
+
+  static async retrieveEventNFT(id) {
+    const record = await db("event_nft").where({ event_id: id }).first();
+    return record || null;
+  }
+
+  static async updateEventNFT(id, updates) {
+    const updatedRows = await knex("event_nft")
+      .where({ event_id: id })
+      .update(updates)
+      .returning("*");
+    return updatedRows.length;
+  }
+
+  static async deleteEventNFT(id) {
+    const deletedRows = await knex("event_nft")
+      .where({ event_id: id })
+      .delete();
+    return deletedRows;
   }
 }
 
