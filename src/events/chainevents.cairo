@@ -2,7 +2,7 @@
 /// @title Events Management Contract
 /// @notice A contract for creating and managing events with registration and attendance tracking
 /// @dev Implements Ownable and Upgradeable components from OpenZeppelin
-pub mod Events {
+pub mod ChainEvents {
     use core::num::traits::zero::Zero;
     use chainevents_contracts::base::types::{EventDetails, EventRegistration, EventType};
     use chainevents_contracts::base::errors::Errors::{
@@ -17,7 +17,6 @@ pub mod Events {
     };
     use openzeppelin::access::ownable::OwnableComponent;
     use openzeppelin_upgrades::UpgradeableComponent;
-    use openzeppelin_upgrades::interface::IUpgradeable;
 
     component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
     component!(path: UpgradeableComponent, storage: upgradeable, event: UpgradeableEvent);
@@ -130,8 +129,9 @@ pub mod Events {
     /// @notice Initializes the Events contract
     /// @dev Sets the initial event count to 0
     #[constructor]
-    fn constructor(ref self: ContractState) {
-        self.event_counts.write(0)
+    fn constructor(ref self: ContractState, owner: ContractAddress) {
+        self.event_counts.write(0);
+        self.ownable.initializer(owner);
     }
 
     #[abi(embed_v0)]
@@ -152,8 +152,8 @@ pub mod Events {
                 name: event_name,
                 location: event_location,
                 organizer: event_owner,
-                total_register: 1,
-                total_attendees: 2,
+                total_register: 0,
+                total_attendees: 0,
                 event_type: EventType::Free,
                 is_closed: false,
                 paid_amount: 0,

@@ -1,2 +1,2 @@
-pub mod events;
+pub mod chainevents;
 pub mod eventnft;
