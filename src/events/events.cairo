@@ -37,14 +37,6 @@ pub mod Events {
         ownable: OwnableComponent::Storage,
         #[substorage(v0)]
         upgradeable: UpgradeableComponent::Storage,
-        // new_events: Map<u256, EventDetails>, // map <eventId, EventDetailsParams>
-        // event_counts: u256,
-        // registered_events: Map<
-        //     u256, Map<u256, ContractAddress>
-        // >, // map <eventId, RegisteredUser Address>
-        // event_attendances: Map<u256, ContractAddress>, //  map <eventId, RegisteredUser Address>
-
-        // STORAGE MAPPING REFACTOR
         event_owners: Map<u256, ContractAddress>, // map(event_id, eventOwnerAddress)
         event_counts: u256,
         event_details: Map<u256, EventDetails>, // map(event_id, EventDetailsParams)
@@ -52,11 +44,16 @@ pub mod Events {
         attendee_event_details: Map<
             (u256, ContractAddress), EventRegistration
         >, // map <(event_id, attendeeAddress), EventRegistration>
-        paid_events: Map<
-            (ContractAddress, u256), u256
-        >, // map<(attendeeAddress, event_id), amount_paid>
+        // paid_events: Map<
+        //     (ContractAddress, u256), u256
+        // >, // map<(attendeeAddress, event_id), amount_paid>
         registered_attendees: Map<u256, u256>, // map<event_id, registered_attendees_count>
         attendee_event_registration_counts: Map<u256, u256>, // map<event_id, registration_count>
+        paid_events: Map<
+            ContractAddress, (u256, u256)
+        >, // map<user_address, (event_id, amount_paid)>
+        paid_events_amount: Map<u256, u256>, // map<event_id, total_amount>
+        paid_event_ticket_count: Map<u256, u256> // map<event_id, count_number_of_ticket>
     }
 
     /// @notice Events emitted by the contract
@@ -390,6 +387,19 @@ pub mod Events {
             let event_owner = self.event_owners.read(event_id);
             assert(caller == event_owner, NOT_OWNER);
             self.attendee_event_registration_counts.read(event_id)
+        }
+
+        fn pay_for_event(ref self: ContractState, event_id: u256) {}
+        fn withdraw_paid_event_amount(ref self: ContractState, event_id: u256) {}
+
+        fn fetch_user_paid_event(self: @ContractState) -> (u256, u256) {
+            (0, 0)
+        }
+        fn paid_event_ticket_counts(self: @ContractState) -> u256 {
+            0
+        }
+        fn event_total_amount_paid(self: @ContractState) -> u256 {
+            0
         }
 
         /// @notice Upgrades the contract implementation
