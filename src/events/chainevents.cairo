@@ -142,30 +142,10 @@ pub mod ChainEvents {
         /// @return event_id The ID of the newly created event
         fn add_event(ref self: ContractState, name: ByteArray, location: ByteArray) -> u256 {
             let event_owner = get_caller_address();
-            let event_id = self.event_counts.read() + 1;
-            self.event_counts.write(event_id);
             let event_name = name.clone();
             let event_location = location.clone();
 
-            let event_details = EventDetails {
-                event_id: event_id,
-                name: event_name,
-                location: event_location,
-                organizer: event_owner,
-                total_register: 0,
-                total_attendees: 0,
-                event_type: EventType::Free,
-                is_closed: false,
-                paid_amount: 0,
-            };
-
-            // save the event details
-            self.event_details.write(event_id, event_details);
-
-            // save event owner
-            self.event_owners.write(event_id, event_owner);
-
-            // register oraganizer for event
+            let event_id = self._create_event(event_name, event_location, event_owner);
 
             // emit event
             self
@@ -432,6 +412,41 @@ pub mod ChainEvents {
             )
                 .unwrap();
             event_nft
+        }
+
+        /// @notice create new event
+        /// @param event_name: Name of the event.
+        /// @param event_location: the location the event will hold.
+        /// @param event_owner: the chief organizer of the event.
+        /// @return Address of the deployed NFT contract
+        fn _create_event(
+            ref self: ContractState,
+            event_name: ByteArray,
+            event_location: ByteArray,
+            event_owner: ContractAddress
+        ) -> u256 {
+            let event_id = self.event_counts.read() + 1;
+            self.event_counts.write(event_id);
+
+            let event_details = EventDetails {
+                event_id: event_id,
+                name: event_name,
+                location: event_location,
+                organizer: event_owner,
+                total_register: 0,
+                total_attendees: 0,
+                event_type: EventType::Free,
+                is_closed: false,
+                paid_amount: 0,
+            };
+
+            // save the event details
+            self.event_details.write(event_id, event_details);
+
+            // save event owner
+            self.event_owners.write(event_id, event_owner);
+
+            event_id
         }
     }
 }
