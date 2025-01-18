@@ -192,33 +192,10 @@ pub mod ChainEvents {
         /// @dev Only callable by event owner
         fn end_event_registration(ref self: ContractState, event_id: u256) {
             let caller = get_caller_address();
-            let event_owner = self.event_owners.read(event_id);
-            assert(!event_owner.is_zero(), INVALID_EVENT);
-            assert(caller == event_owner, NOT_OWNER);
 
-            let event_details = self.event_details.read(event_id);
-            assert(!event_details.is_closed, EVENT_CLOSED);
+            let event_name = self._end_event_registration(caller.clone(), event_id.clone());
 
-            let updated_event_details = EventDetails {
-                event_id: event_details.event_id,
-                name: event_details.name.clone(),
-                location: event_details.location,
-                organizer: event_details.organizer,
-                total_register: event_details.total_register,
-                total_attendees: event_details.total_attendees,
-                event_type: event_details.event_type,
-                is_closed: true, // Set to true
-                paid_amount: event_details.paid_amount,
-            };
-
-            self.event_details.write(event_id, updated_event_details);
-
-            self
-                .emit(
-                    EndEventRegistration {
-                        event_id, event_name: event_details.name, event_owner: caller,
-                    }
-                );
+            self.emit(EndEventRegistration { event_id, event_name, event_owner: caller, });
         }
 
         /// @notice Allows an attendee to RSVP for an event
@@ -227,15 +204,7 @@ pub mod ChainEvents {
         fn rsvp_for_event(ref self: ContractState, event_id: u256) {
             let caller = get_caller_address();
 
-            let attendee_event_details = self
-                .attendee_event_details
-                .entry((event_id, caller))
-                .read();
-
-            assert(attendee_event_details.attendee_address == caller, NOT_REGISTERED);
-            assert(attendee_event_details.has_rsvp == false, ALREADY_RSVP);
-
-            self.attendee_event_details.entry((event_id, caller)).has_rsvp.write(true);
+            self._rsvp_for_event(event_id.clone(), caller.clone());
 
             self.emit(RSVPForEvent { event_id, attendee_address: caller, });
         }
@@ -246,17 +215,13 @@ pub mod ChainEvents {
         /// @dev Only callable by event owner
         fn upgrade_event(ref self: ContractState, event_id: u256, paid_amount: u256) {
             let caller = get_caller_address();
-            let event_owner = self.event_owners.read(event_id);
-            assert(caller == event_owner, NOT_OWNER);
-            let mut event_details = self.event_details.read(event_id);
-            event_details.event_type = EventType::Paid;
-            event_details.paid_amount = paid_amount;
-            self.event_details.write(event_id, event_details.clone());
+            let event_name = self
+                ._upgrade_event(caller.clone(), event_id.clone(), paid_amount.clone());
             self
                 .emit(
                     UpgradedEvent {
                         event_id: event_id,
-                        event_name: event_details.name,
+                        event_name: event_name,
                         paid_amount: paid_amount,
                         event_type: EventType::Paid,
                     }
@@ -463,6 +428,43 @@ pub mod ChainEvents {
             self.registered_attendees.write(event_id, self.registered_attendees.read(event_id) - 1);
             let current_count = self.attendee_event_registration_counts.read(event_id);
             self.attendee_event_registration_counts.write(event_id, current_count - 1);
+        }
+
+        fn _rsvp_for_event(ref self: ContractState, event_id: u256, caller: ContractAddress) {
+            let attendee_event_details = self
+                .attendee_event_details
+                .entry((event_id, caller))
+                .read();
+
+            assert(attendee_event_details.attendee_address == caller, NOT_REGISTERED);
+            assert(attendee_event_details.has_rsvp == false, ALREADY_RSVP);
+
+            self.attendee_event_details.entry((event_id, caller)).has_rsvp.write(true);
+        }
+
+        fn _upgrade_event(
+            ref self: ContractState, caller: ContractAddress, event_id: u256, paid_amount: u256
+        ) -> ByteArray {
+            let event_owner = self.event_owners.read(event_id);
+            assert(caller == event_owner, NOT_OWNER);
+            let mut event_details = self.event_details.read(event_id);
+            event_details.event_type = EventType::Paid;
+            event_details.paid_amount = paid_amount;
+            self.event_details.write(event_id, event_details.clone());
+            event_details.name
+        }
+        fn _end_event_registration(
+            ref self: ContractState, caller: ContractAddress, event_id: u256,
+        ) -> ByteArray {
+            let event_owner = self.event_owners.read(event_id);
+            assert(!event_owner.is_zero(), INVALID_EVENT);
+            assert(caller == event_owner, NOT_OWNER);
+
+            let mut event_details = self.event_details.read(event_id);
+            assert(!event_details.is_closed, EVENT_CLOSED);
+            event_details.is_closed = true;
+            self.event_details.write(event_id, event_details.clone());
+            event_details.name
         }
     }
 }
