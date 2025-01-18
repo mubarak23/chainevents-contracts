@@ -179,33 +179,10 @@ pub mod ChainEvents {
 
         fn unregister_from_event(ref self: ContractState, event_id: u256) {
             let caller = get_caller_address();
-            let event = self.event_details.read(event_id);
-            assert(!event.is_closed, CLOSED_EVENT);
 
-            let attendee_registration = self.attendee_event_details.read((event_id, caller));
-            assert(attendee_registration.attendee_address == caller, NOT_REGISTERED);
+            self._unregister_from_event(event_id.clone(), caller.clone());
 
-            let zero_address: ContractAddress = 0.try_into().unwrap();
-            self
-                .attendee_event_details
-                .write(
-                    (event_id, caller),
-                    EventRegistration {
-                        attendee_address: zero_address,
-                        amount_paid: 0,
-                        has_rsvp: false,
-                        nft_contract_address: zero_address,
-                        nft_token_id: 0,
-                        organizer: zero_address
-                    }
-                );
-
-            self.event_registrations.write(caller, 0);
-
-            self.registered_attendees.write(event_id, self.registered_attendees.read(event_id) - 1);
-            let current_count = self.attendee_event_registration_counts.read(event_id);
-            self.attendee_event_registration_counts.write(event_id, current_count - 1);
-
+            // emit event for the indexers
             self.emit(UnregisteredEvent { event_id, user_address: caller });
         }
 
@@ -455,6 +432,37 @@ pub mod ChainEvents {
             let current_count = self.attendee_event_registration_counts.read(event_id);
             self.attendee_event_registration_counts.write(event_id, current_count + 1);
             _event.name
+        }
+
+        fn _unregister_from_event(
+            ref self: ContractState, event_id: u256, caller: ContractAddress
+        ) {
+            let event = self.event_details.read(event_id);
+            assert(!event.is_closed, CLOSED_EVENT);
+
+            let attendee_registration = self.attendee_event_details.read((event_id, caller));
+            assert(attendee_registration.attendee_address == caller, NOT_REGISTERED);
+
+            let zero_address: ContractAddress = 0.try_into().unwrap();
+            self
+                .attendee_event_details
+                .write(
+                    (event_id, caller),
+                    EventRegistration {
+                        attendee_address: zero_address,
+                        amount_paid: 0,
+                        has_rsvp: false,
+                        nft_contract_address: zero_address,
+                        nft_token_id: 0,
+                        organizer: zero_address
+                    }
+                );
+
+            self.event_registrations.write(caller, 0);
+
+            self.registered_attendees.write(event_id, self.registered_attendees.read(event_id) - 1);
+            let current_count = self.attendee_event_registration_counts.read(event_id);
+            self.attendee_event_registration_counts.write(event_id, current_count - 1);
         }
     }
 }
