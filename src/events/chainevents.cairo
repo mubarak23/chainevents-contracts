@@ -166,40 +166,13 @@ pub mod ChainEvents {
         fn register_for_event(ref self: ContractState, event_id: u256) {
             let caller = get_caller_address();
 
-            let _event = self.event_details.read(event_id);
+            let event_name = self._register_for_event(caller.clone(), event_id.clone());
 
-            let _attendee_registration = self.attendee_event_details.read((event_id, caller));
-
-            assert(caller.is_non_zero(), ZERO_ADDRESS_CALLER);
-
-            assert(!_attendee_registration.has_rsvp, ALREADY_REGISTERED);
-
-            assert(!_event.is_closed, CLOSED_EVENT);
-
-            let _attendee_event_details = EventRegistration {
-                attendee_address: caller,
-                amount_paid: 0,
-                has_rsvp: false,
-                nft_contract_address: caller, // nft contract address needed
-                nft_token_id: 0,
-                organizer: _event.organizer
-            };
-
-            self.attendee_event_details.write((event_id, caller), _attendee_event_details);
-
-            self.event_registrations.write(caller, event_id);
-
-            // update event attendees count.
-            self.registered_attendees.write(event_id, self.registered_attendees.read(event_id) + 1);
-
-            // Update registered attendees count
-            let current_count = self.attendee_event_registration_counts.read(event_id);
-            self.attendee_event_registration_counts.write(event_id, current_count + 1);
-
+            // emit event for indexer
             self
                 .emit(
                     RegisteredForEvent {
-                        event_id: event_id, event_name: _event.name, user_address: caller
+                        event_id: event_id, event_name: event_name, user_address: caller
                     }
                 );
         }
@@ -447,6 +420,41 @@ pub mod ChainEvents {
             self.event_owners.write(event_id, event_owner);
 
             event_id
+        }
+
+        fn _register_for_event(
+            ref self: ContractState, caller: ContractAddress, event_id: u256
+        ) -> ByteArray {
+            let _event = self.event_details.read(event_id);
+
+            let _attendee_registration = self.attendee_event_details.read((event_id, caller));
+
+            assert(caller.is_non_zero(), ZERO_ADDRESS_CALLER);
+
+            assert(!_attendee_registration.has_rsvp, ALREADY_REGISTERED);
+
+            assert(!_event.is_closed, CLOSED_EVENT);
+
+            let _attendee_event_details = EventRegistration {
+                attendee_address: caller,
+                amount_paid: 0,
+                has_rsvp: false,
+                nft_contract_address: caller, // nft contract address needed
+                nft_token_id: 0,
+                organizer: _event.organizer
+            };
+
+            self.attendee_event_details.write((event_id, caller), _attendee_event_details);
+
+            self.event_registrations.write(caller, event_id);
+
+            // update event attendees count.
+            self.registered_attendees.write(event_id, self.registered_attendees.read(event_id) + 1);
+
+            // Update registered attendees count
+            let current_count = self.attendee_event_registration_counts.read(event_id);
+            self.attendee_event_registration_counts.write(event_id, current_count + 1);
+            _event.name
         }
     }
 }
