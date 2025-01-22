@@ -421,13 +421,7 @@ pub mod Events {
 
             self._pay_for_event(event.event_id, event.paid_amount, caller);
 
-            self.emit(
-                EventPayment {
-                    event_id: event.event_id,
-                    caller,
-                    amount: event.paid_amount
-                }
-            );
+            self.emit(EventPayment { event_id: event.event_id, caller, amount: event.paid_amount });
         }
     }
 
@@ -458,9 +452,11 @@ pub mod Events {
         /// @param event_id The ID of the event to be paid for
         /// @param event_amount The class amount to be paid
         /// @param caller Address of the user calling the pay_for_event() function
-        fn _pay_for_event(ref self: ContractState, event_id: u256, event_amount: u256, caller: ContractAddress) {
+        fn _pay_for_event(
+            ref self: ContractState, event_id: u256, event_amount: u256, caller: ContractAddress
+        ) {
             let this_contract = get_contract_address();
-            let token = ERC20ABIDispatcher {contract_address: self.event_payment_token.read()};
+            let token = ERC20ABIDispatcher { contract_address: self.event_payment_token.read() };
             let transfer = token.transfer_from(caller, this_contract, event_amount);
 
             assert(transfer, TRANSFER_FAILED);
