@@ -7,7 +7,7 @@ pub mod Events {
     use chainevents_contracts::base::types::{EventDetails, EventRegistration, EventType};
     use chainevents_contracts::base::errors::Errors::{
         ZERO_ADDRESS_CALLER, NOT_OWNER, CLOSED_EVENT, ALREADY_REGISTERED, NOT_REGISTERED,
-        ALREADY_RSVP, INVALID_EVENT, EVENT_CLOSED
+        ALREADY_RSVP, INVALID_EVENT, EVENT_CLOSED, TRANSFER_FAILED
     };
     use chainevents_contracts::interfaces::IEvent::IEvent;
     use core::starknet::{
@@ -415,7 +415,11 @@ pub mod Events {
         fn pay_for_event(ref self: ContractState, event_id: u256) {
             let caller = get_caller_address();
             let event = self.event_details.entry(event_id).read();
-            self._pay_for_event(event.paid_amount, caller);
+            let attendee_event = self.attendee_event_details.entry((event_id, caller)).read();
+
+            assert(caller == attendee_event.attendee_address, NOT_REGISTERED);
+
+            self._pay_for_event(event.event_id, event.paid_amount, caller);
 
             self.emit(
                 EventPayment {
@@ -450,12 +454,18 @@ pub mod Events {
             event_nft
         }
 
-        fn _pay_for_event(ref self: ContractState, event_amount: u256, caller: ContractAddress) {
+        /// @notice Pays for an event by transferring from caller address to contract
+        /// @param event_id The ID of the event to be paid for
+        /// @param event_amount The class amount to be paid
+        /// @param caller Address of the user calling the pay_for_event() function
+        fn _pay_for_event(ref self: ContractState, event_id: u256, event_amount: u256, caller: ContractAddress) {
             let this_contract = get_contract_address();
             let token = ERC20ABIDispatcher {contract_address: self.event_payment_token.read()};
             let transfer = token.transfer_from(caller, this_contract, event_amount);
 
-            assert(transfer, 'transfer failed');
+            assert(transfer, TRANSFER_FAILED);
+
+            self.attendee_event_details.entry((event_id, caller)).amount_paid.write(event_amount);
         }
     }
 }
