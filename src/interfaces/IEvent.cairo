@@ -23,4 +23,6 @@ pub trait IEvent<TContractState> {
     fn event_registration_count(self: @TContractState, event_id: u256) -> u256;
 
     fn upgrade(ref self: TContractState, new_class_hash: ClassHash);
+
+    fn pay_for_event(ref self: TContractState, event_id: u256);
 }

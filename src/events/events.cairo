@@ -12,12 +12,13 @@ pub mod Events {
     use chainevents_contracts::interfaces::IEvent::IEvent;
     use core::starknet::{
         ContractAddress, get_caller_address, syscalls::deploy_syscall, ClassHash,
-        get_block_timestamp,
+        get_block_timestamp, get_contract_address,
         storage::{Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePathEntry}
     };
     use openzeppelin::access::ownable::OwnableComponent;
     use openzeppelin_upgrades::UpgradeableComponent;
     use openzeppelin_upgrades::interface::IUpgradeable;
+    use openzeppelin::token::erc20::interface::{ERC20ABIDispatcher, ERC20ABIDispatcherTrait};
 
     component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
     component!(path: UpgradeableComponent, storage: upgradeable, event: UpgradeableEvent);
@@ -57,6 +58,7 @@ pub mod Events {
         >, // map<(attendeeAddress, event_id), amount_paid>
         registered_attendees: Map<u256, u256>, // map<event_id, registered_attendees_count>
         attendee_event_registration_counts: Map<u256, u256>, // map<event_id, registration_count>
+        event_payment_token: ContractAddress
     }
 
     /// @notice Events emitted by the contract
@@ -74,6 +76,7 @@ pub mod Events {
         #[flat]
         UpgradeableEvent: UpgradeableComponent::Event,
         UnregisteredEvent: UnregisteredEvent,
+        EventPayment: EventPayment,
     }
 
     /// @notice Event emitted when a new event is created
@@ -128,6 +131,13 @@ pub mod Events {
     pub struct EventAttendanceMark {
         pub event_id: u256,
         pub user_address: ContractAddress
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct EventPayment {
+        pub event_id: u256,
+        pub caller: ContractAddress,
+        pub amount: u256
     }
 
     /// @notice Initializes the Events contract
@@ -399,6 +409,22 @@ pub mod Events {
             self.ownable.assert_only_owner();
             self.upgradeable.upgrade(new_class_hash);
         }
+
+        /// @notice Allows users to pay for an event
+        /// @param event_id: The id of the event to be paid for
+        fn pay_for_event(ref self: ContractState, event_id: u256) {
+            let caller = get_caller_address();
+            let event = self.event_details.entry(event_id).read();
+            self._pay_for_event(event.paid_amount, caller);
+
+            self.emit(
+                EventPayment {
+                    event_id: event.event_id,
+                    caller,
+                    amount: event.paid_amount
+                }
+            );
+        }
     }
 
     #[generate_trait]
@@ -422,6 +448,14 @@ pub mod Events {
             )
                 .unwrap();
             event_nft
+        }
+
+        fn _pay_for_event(ref self: ContractState, event_amount: u256, caller: ContractAddress) {
+            let this_contract = get_contract_address();
+            let token = ERC20ABIDispatcher {contract_address: self.event_payment_token.read()};
+            let transfer = token.transfer_from(caller, this_contract, event_amount);
+
+            assert(transfer, 'transfer failed');
         }
     }
 }
