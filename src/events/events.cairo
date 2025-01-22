@@ -418,6 +418,7 @@ pub mod Events {
             let attendee_event = self.attendee_event_details.entry((event_id, caller)).read();
 
             assert(caller == attendee_event.attendee_address, NOT_REGISTERED);
+            assert(event.event_type == EventType::Paid, INVALID_EVENT);
 
             self._pay_for_event(event.event_id, event.paid_amount, caller);
 
