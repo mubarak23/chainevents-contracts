@@ -37,6 +37,7 @@ pub mod FeeCollector {
         >, // map<user_address, (event_id, fee_amount)>
         event_ticket_total_fee: Map<u256, u256>, // Map<event_id, total_fee_collected>
         total_fee_collected: u256,
+        fee_percentage: u256,
     }
 
     /// @notice Events emitted by the contract
@@ -61,14 +62,15 @@ pub mod FeeCollector {
     /// @notice Initializes the Events contract
     /// @dev Sets the initial event count to 0
     #[constructor]
-    fn constructor(ref self: ContractState) {
+    fn constructor(ref self: ContractState, fee_percentage: u256) {
         self.ownable.initializer(get_caller_address());
-        self.total_fee_collected.write(0)
+        self.total_fee_collected.write(0);
+        self.fee_percentage.write(fee_percentage);
     }
 
     #[abi(embed_v0)]
     impl FeeCollectorImpl of IFeeCollector<ContractState> {
-        fn pay_for_event(ref self: TContractState, event_id: u256) {}
+        fn collect_fee_for_event(ref self: TContractState, event_id: u256) {}
         fn total_fees_collector(self: @TContractState) -> u256 {
             0
         }
