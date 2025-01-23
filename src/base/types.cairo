@@ -1,5 +1,3 @@
-use core::serde::Serde;
-use core::option::OptionTrait;
 use core::starknet::ContractAddress;
 
 /// @title Event Details Structure

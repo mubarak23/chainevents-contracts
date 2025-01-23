@@ -2,7 +2,7 @@
 /// @title Events Management Contract
 /// @notice A contract for creating and managing events with registration and attendance tracking
 /// @dev Implements Ownable and Upgradeable components from OpenZeppelin
-pub mod Events {
+pub mod ChainEvents {
     use core::num::traits::zero::Zero;
     use chainevents_contracts::base::types::{EventDetails, EventRegistration, EventType};
     use chainevents_contracts::base::errors::Errors::{
@@ -17,7 +17,6 @@ pub mod Events {
     };
     use openzeppelin::access::ownable::OwnableComponent;
     use openzeppelin_upgrades::UpgradeableComponent;
-    use openzeppelin_upgrades::interface::IUpgradeable;
 
     component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
     component!(path: UpgradeableComponent, storage: upgradeable, event: UpgradeableEvent);
@@ -37,14 +36,6 @@ pub mod Events {
         ownable: OwnableComponent::Storage,
         #[substorage(v0)]
         upgradeable: UpgradeableComponent::Storage,
-        // new_events: Map<u256, EventDetails>, // map <eventId, EventDetailsParams>
-        // event_counts: u256,
-        // registered_events: Map<
-        //     u256, Map<u256, ContractAddress>
-        // >, // map <eventId, RegisteredUser Address>
-        // event_attendances: Map<u256, ContractAddress>, //  map <eventId, RegisteredUser Address>
-
-        // STORAGE MAPPING REFACTOR
         event_owners: Map<u256, ContractAddress>, // map(event_id, eventOwnerAddress)
         event_counts: u256,
         event_details: Map<u256, EventDetails>, // map(event_id, EventDetailsParams)
@@ -52,11 +43,16 @@ pub mod Events {
         attendee_event_details: Map<
             (u256, ContractAddress), EventRegistration
         >, // map <(event_id, attendeeAddress), EventRegistration>
-        paid_events: Map<
-            (ContractAddress, u256), u256
-        >, // map<(attendeeAddress, event_id), amount_paid>
+        // paid_events: Map<
+        //     (ContractAddress, u256), u256
+        // >, // map<(attendeeAddress, event_id), amount_paid>
         registered_attendees: Map<u256, u256>, // map<event_id, registered_attendees_count>
         attendee_event_registration_counts: Map<u256, u256>, // map<event_id, registration_count>
+        paid_events: Map<
+            ContractAddress, (u256, u256)
+        >, // map<user_address, (event_id, amount_paid)>
+        paid_events_amount: Map<u256, u256>, // map<event_id, total_amount>
+        paid_event_ticket_count: Map<u256, u256> // map<event_id, count_number_of_ticket>
     }
 
     /// @notice Events emitted by the contract
@@ -133,8 +129,9 @@ pub mod Events {
     /// @notice Initializes the Events contract
     /// @dev Sets the initial event count to 0
     #[constructor]
-    fn constructor(ref self: ContractState) {
-        self.event_counts.write(0)
+    fn constructor(ref self: ContractState, owner: ContractAddress) {
+        self.event_counts.write(0);
+        self.ownable.initializer(owner);
     }
 
     #[abi(embed_v0)]
@@ -145,30 +142,10 @@ pub mod Events {
         /// @return event_id The ID of the newly created event
         fn add_event(ref self: ContractState, name: ByteArray, location: ByteArray) -> u256 {
             let event_owner = get_caller_address();
-            let event_id = self.event_counts.read() + 1;
-            self.event_counts.write(event_id);
             let event_name = name.clone();
             let event_location = location.clone();
 
-            let event_details = EventDetails {
-                event_id: event_id,
-                name: event_name,
-                location: event_location,
-                organizer: event_owner,
-                total_register: 1,
-                total_attendees: 2,
-                event_type: EventType::Free,
-                is_closed: false,
-                paid_amount: 0,
-            };
-
-            // save the event details
-            self.event_details.write(event_id, event_details);
-
-            // save event owner
-            self.event_owners.write(event_id, event_owner);
-
-            // register oraganizer for event
+            let event_id = self._create_event(event_name, event_location, event_owner);
 
             // emit event
             self
@@ -189,73 +166,23 @@ pub mod Events {
         fn register_for_event(ref self: ContractState, event_id: u256) {
             let caller = get_caller_address();
 
-            let _event = self.event_details.read(event_id);
+            let event_name = self._register_for_event(caller.clone(), event_id.clone());
 
-            let _attendee_registration = self.attendee_event_details.read((event_id, caller));
-
-            assert(caller.is_non_zero(), ZERO_ADDRESS_CALLER);
-
-            assert(!_attendee_registration.has_rsvp, ALREADY_REGISTERED);
-
-            assert(!_event.is_closed, CLOSED_EVENT);
-
-            let _attendee_event_details = EventRegistration {
-                attendee_address: caller,
-                amount_paid: 0,
-                has_rsvp: false,
-                nft_contract_address: caller, // nft contract address needed
-                nft_token_id: 0,
-                organizer: _event.organizer
-            };
-
-            self.attendee_event_details.write((event_id, caller), _attendee_event_details);
-
-            self.event_registrations.write(caller, event_id);
-
-            // update event attendees count.
-            self.registered_attendees.write(event_id, self.registered_attendees.read(event_id) + 1);
-
-            // Update registered attendees count
-            let current_count = self.attendee_event_registration_counts.read(event_id);
-            self.attendee_event_registration_counts.write(event_id, current_count + 1);
-
+            // emit event for indexer
             self
                 .emit(
                     RegisteredForEvent {
-                        event_id: event_id, event_name: _event.name, user_address: caller
+                        event_id: event_id, event_name: event_name, user_address: caller
                     }
                 );
         }
 
         fn unregister_from_event(ref self: ContractState, event_id: u256) {
             let caller = get_caller_address();
-            let event = self.event_details.read(event_id);
-            assert(!event.is_closed, CLOSED_EVENT);
 
-            let attendee_registration = self.attendee_event_details.read((event_id, caller));
-            assert(attendee_registration.attendee_address == caller, NOT_REGISTERED);
+            self._unregister_from_event(event_id.clone(), caller.clone());
 
-            let zero_address: ContractAddress = 0.try_into().unwrap();
-            self
-                .attendee_event_details
-                .write(
-                    (event_id, caller),
-                    EventRegistration {
-                        attendee_address: zero_address,
-                        amount_paid: 0,
-                        has_rsvp: false,
-                        nft_contract_address: zero_address,
-                        nft_token_id: 0,
-                        organizer: zero_address
-                    }
-                );
-
-            self.event_registrations.write(caller, 0);
-
-            self.registered_attendees.write(event_id, self.registered_attendees.read(event_id) - 1);
-            let current_count = self.attendee_event_registration_counts.read(event_id);
-            self.attendee_event_registration_counts.write(event_id, current_count - 1);
-
+            // emit event for the indexers
             self.emit(UnregisteredEvent { event_id, user_address: caller });
         }
 
@@ -265,33 +192,10 @@ pub mod Events {
         /// @dev Only callable by event owner
         fn end_event_registration(ref self: ContractState, event_id: u256) {
             let caller = get_caller_address();
-            let event_owner = self.event_owners.read(event_id);
-            assert(!event_owner.is_zero(), INVALID_EVENT);
-            assert(caller == event_owner, NOT_OWNER);
 
-            let event_details = self.event_details.read(event_id);
-            assert(!event_details.is_closed, EVENT_CLOSED);
+            let event_name = self._end_event_registration(caller.clone(), event_id.clone());
 
-            let updated_event_details = EventDetails {
-                event_id: event_details.event_id,
-                name: event_details.name.clone(),
-                location: event_details.location,
-                organizer: event_details.organizer,
-                total_register: event_details.total_register,
-                total_attendees: event_details.total_attendees,
-                event_type: event_details.event_type,
-                is_closed: true, // Set to true
-                paid_amount: event_details.paid_amount,
-            };
-
-            self.event_details.write(event_id, updated_event_details);
-
-            self
-                .emit(
-                    EndEventRegistration {
-                        event_id, event_name: event_details.name, event_owner: caller,
-                    }
-                );
+            self.emit(EndEventRegistration { event_id, event_name, event_owner: caller, });
         }
 
         /// @notice Allows an attendee to RSVP for an event
@@ -300,15 +204,7 @@ pub mod Events {
         fn rsvp_for_event(ref self: ContractState, event_id: u256) {
             let caller = get_caller_address();
 
-            let attendee_event_details = self
-                .attendee_event_details
-                .entry((event_id, caller))
-                .read();
-
-            assert(attendee_event_details.attendee_address == caller, NOT_REGISTERED);
-            assert(attendee_event_details.has_rsvp == false, ALREADY_RSVP);
-
-            self.attendee_event_details.entry((event_id, caller)).has_rsvp.write(true);
+            self._rsvp_for_event(event_id.clone(), caller.clone());
 
             self.emit(RSVPForEvent { event_id, attendee_address: caller, });
         }
@@ -319,17 +215,13 @@ pub mod Events {
         /// @dev Only callable by event owner
         fn upgrade_event(ref self: ContractState, event_id: u256, paid_amount: u256) {
             let caller = get_caller_address();
-            let event_owner = self.event_owners.read(event_id);
-            assert(caller == event_owner, NOT_OWNER);
-            let mut event_details = self.event_details.read(event_id);
-            event_details.event_type = EventType::Paid;
-            event_details.paid_amount = paid_amount;
-            self.event_details.write(event_id, event_details.clone());
+            let event_name = self
+                ._upgrade_event(caller.clone(), event_id.clone(), paid_amount.clone());
             self
                 .emit(
                     UpgradedEvent {
                         event_id: event_id,
-                        event_name: event_details.name,
+                        event_name: event_name,
                         paid_amount: paid_amount,
                         event_type: EventType::Paid,
                     }
@@ -392,6 +284,19 @@ pub mod Events {
             self.attendee_event_registration_counts.read(event_id)
         }
 
+        fn pay_for_event(ref self: ContractState, event_id: u256) {}
+        fn withdraw_paid_event_amount(ref self: ContractState, event_id: u256) {}
+
+        fn fetch_user_paid_event(self: @ContractState) -> (u256, u256) {
+            (0, 0)
+        }
+        fn paid_event_ticket_counts(self: @ContractState) -> u256 {
+            0
+        }
+        fn event_total_amount_paid(self: @ContractState) -> u256 {
+            0
+        }
+
         /// @notice Upgrades the contract implementation
         /// @param new_class_hash The new class hash to upgrade to
         /// @dev Only callable by owner
@@ -422,6 +327,144 @@ pub mod Events {
             )
                 .unwrap();
             event_nft
+        }
+
+        /// @notice create new event
+        /// @param event_name: Name of the event.
+        /// @param event_location: the location the event will hold.
+        /// @param event_owner: the chief organizer of the event.
+        /// @return Address of the deployed NFT contract
+        fn _create_event(
+            ref self: ContractState,
+            event_name: ByteArray,
+            event_location: ByteArray,
+            event_owner: ContractAddress
+        ) -> u256 {
+            let event_id = self.event_counts.read() + 1;
+            self.event_counts.write(event_id);
+
+            let event_details = EventDetails {
+                event_id: event_id,
+                name: event_name,
+                location: event_location,
+                organizer: event_owner,
+                total_register: 0,
+                total_attendees: 0,
+                event_type: EventType::Free,
+                is_closed: false,
+                paid_amount: 0,
+            };
+
+            // save the event details
+            self.event_details.write(event_id, event_details);
+
+            // save event owner
+            self.event_owners.write(event_id, event_owner);
+
+            event_id
+        }
+
+        fn _register_for_event(
+            ref self: ContractState, caller: ContractAddress, event_id: u256
+        ) -> ByteArray {
+            let _event = self.event_details.read(event_id);
+
+            let _attendee_registration = self.attendee_event_details.read((event_id, caller));
+
+            assert(caller.is_non_zero(), ZERO_ADDRESS_CALLER);
+
+            assert(!_attendee_registration.has_rsvp, ALREADY_REGISTERED);
+
+            assert(!_event.is_closed, CLOSED_EVENT);
+
+            let _attendee_event_details = EventRegistration {
+                attendee_address: caller,
+                amount_paid: 0,
+                has_rsvp: false,
+                nft_contract_address: caller, // nft contract address needed
+                nft_token_id: 0,
+                organizer: _event.organizer
+            };
+
+            self.attendee_event_details.write((event_id, caller), _attendee_event_details);
+
+            self.event_registrations.write(caller, event_id);
+
+            // update event attendees count.
+            self.registered_attendees.write(event_id, self.registered_attendees.read(event_id) + 1);
+
+            // Update registered attendees count
+            let current_count = self.attendee_event_registration_counts.read(event_id);
+            self.attendee_event_registration_counts.write(event_id, current_count + 1);
+            _event.name
+        }
+
+        fn _unregister_from_event(
+            ref self: ContractState, event_id: u256, caller: ContractAddress
+        ) {
+            let event = self.event_details.read(event_id);
+            assert(!event.is_closed, CLOSED_EVENT);
+
+            let attendee_registration = self.attendee_event_details.read((event_id, caller));
+            assert(attendee_registration.attendee_address == caller, NOT_REGISTERED);
+
+            let zero_address: ContractAddress = 0.try_into().unwrap();
+            self
+                .attendee_event_details
+                .write(
+                    (event_id, caller),
+                    EventRegistration {
+                        attendee_address: zero_address,
+                        amount_paid: 0,
+                        has_rsvp: false,
+                        nft_contract_address: zero_address,
+                        nft_token_id: 0,
+                        organizer: zero_address
+                    }
+                );
+
+            self.event_registrations.write(caller, 0);
+
+            self.registered_attendees.write(event_id, self.registered_attendees.read(event_id) - 1);
+            let current_count = self.attendee_event_registration_counts.read(event_id);
+            self.attendee_event_registration_counts.write(event_id, current_count - 1);
+        }
+
+        fn _rsvp_for_event(ref self: ContractState, event_id: u256, caller: ContractAddress) {
+            let attendee_event_details = self
+                .attendee_event_details
+                .entry((event_id, caller))
+                .read();
+
+            assert(attendee_event_details.attendee_address == caller, NOT_REGISTERED);
+            assert(attendee_event_details.has_rsvp == false, ALREADY_RSVP);
+
+            self.attendee_event_details.entry((event_id, caller)).has_rsvp.write(true);
+        }
+
+        fn _upgrade_event(
+            ref self: ContractState, caller: ContractAddress, event_id: u256, paid_amount: u256
+        ) -> ByteArray {
+            let event_owner = self.event_owners.read(event_id);
+            assert(caller == event_owner, NOT_OWNER);
+            let mut event_details = self.event_details.read(event_id);
+            event_details.event_type = EventType::Paid;
+            event_details.paid_amount = paid_amount;
+            self.event_details.write(event_id, event_details.clone());
+            event_details.name
+        }
+        fn _end_event_registration(
+            ref self: ContractState, caller: ContractAddress, event_id: u256,
+        ) -> ByteArray {
+            let event_owner = self.event_owners.read(event_id);
+            assert(!event_owner.is_zero(), INVALID_EVENT);
+            assert(caller == event_owner, NOT_OWNER);
+
+            let mut event_details = self.event_details.read(event_id);
+            assert(!event_details.is_closed, EVENT_CLOSED);
+            event_details.is_closed = true;
+            self.event_details.write(event_id, event_details.clone());
+            event_details.name
         }
     }
 }

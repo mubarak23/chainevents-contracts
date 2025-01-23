@@ -1,8 +1,7 @@
 // *************************************************************************
 //                              Events TEST
 // *************************************************************************
-use core::option::OptionTrait;
-use core::starknet::SyscallResultTrait;
+
 use core::result::ResultTrait;
 use core::traits::{TryInto, Into};
 use starknet::{ContractAddress};
@@ -13,20 +12,29 @@ use snforge_std::{
 };
 
 use chainevents_contracts::interfaces::IEvent::{IEventDispatcher, IEventDispatcherTrait};
-use chainevents_contracts::events::events::Events;
+use chainevents_contracts::events::chainevents::ChainEvents;
 use chainevents_contracts::base::types::EventType;
 
 const USER_ONE: felt252 = 'JOE';
 const USER_TWO: felt252 = 'DOE';
+
+fn OWNER() -> ContractAddress {
+    'owner'.try_into().unwrap()
+}
 
 // *************************************************************************
 //                              SETUP
 // *************************************************************************
 fn __setup__() -> ContractAddress {
     // deploy  events
-    let events_class_hash = declare("Events").unwrap().contract_class();
+    let events_class_hash = declare("ChainEvents").unwrap().contract_class();
 
     let mut events_constructor_calldata: Array<felt252> = array![];
+
+    let owner = OWNER();
+
+    owner.serialize(ref events_constructor_calldata);
+
     let (event_contract_address, _) = events_class_hash
         .deploy(@events_constructor_calldata)
         .unwrap();
@@ -141,8 +149,8 @@ fn test_rsvp_for_event_should_emit_event_on_success() {
 
     event_dispatcher.rsvp_for_event(event_id);
 
-    let expected_event = Events::Event::RSVPForEvent(
-        Events::RSVPForEvent { event_id: 1, attendee_address: caller }
+    let expected_event = ChainEvents::Event::RSVPForEvent(
+        ChainEvents::RSVPForEvent { event_id: 1, attendee_address: caller }
     );
     spy.assert_emitted(@array![(event_contract_address, expected_event)]);
 
@@ -260,8 +268,8 @@ fn test_event_details() {
     let name_matches = event_details.name == "bitcoin dev meetup";
     let location_matches = event_details.location == "Dan Marna road";
     let organizer_matches = event_details.organizer == user_address;
-    let total_register_matches = event_details.total_register == 1;
-    let total_attendees_matches = event_details.total_attendees == 2;
+    let total_register_matches = event_details.total_register == 0;
+    let total_attendees_matches = event_details.total_attendees == 0;
     let event_type_matches = event_details.event_type == EventType::Free;
     let is_closed_matches = !event_details.is_closed;
     let paid_amount_matches = event_details.paid_amount == 0;
@@ -271,8 +279,8 @@ fn test_event_details() {
     assert(name_matches, 'Event name mismatch');
     assert(location_matches, 'Event location mismatch');
     assert(organizer_matches, 'Organizer mismatch');
-    assert(total_register_matches, 'Total register should be 1');
-    assert(total_attendees_matches, 'Total attendees should be 2');
+    assert(total_register_matches, 'Total register should be 0');
+    assert(total_attendees_matches, 'Total attendees should be 0');
     assert(event_type_matches, 'Event type mismatch');
     assert(is_closed_matches, 'Event should not be closed');
     assert(paid_amount_matches, 'Paid amount should be 0');
@@ -473,8 +481,8 @@ fn test_unregister_from_event() {
     let mut spy = spy_events();
     event_dispatcher.unregister_from_event(event_id);
 
-    let expected_event = Events::Event::UnregisteredEvent(
-        Events::UnregisteredEvent { event_id, user_address: USER_TWO.try_into().unwrap() }
+    let expected_event = ChainEvents::Event::UnregisteredEvent(
+        ChainEvents::UnregisteredEvent { event_id, user_address: USER_TWO.try_into().unwrap() }
     );
     spy.assert_emitted(@array![(event_contract_address, expected_event)]);
 
