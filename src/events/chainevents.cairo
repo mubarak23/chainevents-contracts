@@ -304,7 +304,7 @@ pub mod ChainEvents {
             assert(caller == attendee_event.attendee_address, NOT_REGISTERED);
             assert(event.event_type == EventType::Paid, INVALID_EVENT);
 
-            self._pay_for_event(event.event_id, event.paid_amount, caller);
+            // self._pay_for_event(event.event_id, event.paid_amount, caller);
 
             self.emit(EventPayment { event_id: event.event_id, caller, amount: event.paid_amount });
         }
