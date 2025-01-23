@@ -49,9 +49,7 @@ pub mod ChainEvents {
         // >, // map<(attendeeAddress, event_id), amount_paid>
         registered_attendees: Map<u256, u256>, // map<event_id, registered_attendees_count>
         attendee_event_registration_counts: Map<u256, u256>, // map<event_id, registration_count>
-        paid_events: Map<
-            ContractAddress, (u256, u256)
-        >, // map<user_address, (event_id, amount_paid)>
+        paid_events: Map<ContractAddress, (u256, u256)>, // map<user_address, (event_id, amount_paid)>
         paid_events_amount: Map<u256, u256>, // map<event_id, total_amount>
         paid_event_ticket_count: Map<u256, u256>, // map<event_id, count_number_of_ticket>
         event_payment_token: ContractAddress
@@ -294,6 +292,8 @@ pub mod ChainEvents {
             self.attendee_event_registration_counts.read(event_id)
         }
 
+        /// @notice Allows users to pay for an event
+        /// @param event_id: The id of the event to be paid for
         fn pay_for_event(ref self: ContractState, event_id: u256) {
             let caller = get_caller_address();
             let event = self.event_details.entry(event_id).read();
@@ -504,6 +504,13 @@ pub mod ChainEvents {
             assert(transfer, TRANSFER_FAILED);
 
             self.attendee_event_details.entry((event_id, caller)).amount_paid.write(event_amount);
+            self.paid_events.entry(caller).write((event_id, event_amount));
+
+            let total_event_amount_paid = self.paid_events_amount.entry(event_id).read();
+            let prev_event_ticket_count = self.paid_event_ticket_count.entry(event_id).read();
+
+            self.paid_events_amount.entry(event_id).write(total_event_amount_paid + event_amount);
+            self.paid_event_ticket_count.entry(event_id).write(prev_event_ticket_count + 1);
         }
     }
 }
