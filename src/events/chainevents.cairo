@@ -49,7 +49,9 @@ pub mod ChainEvents {
         // >, // map<(attendeeAddress, event_id), amount_paid>
         registered_attendees: Map<u256, u256>, // map<event_id, registered_attendees_count>
         attendee_event_registration_counts: Map<u256, u256>, // map<event_id, registration_count>
-        paid_events: Map<ContractAddress, (u256, u256)>, // map<user_address, (event_id, amount_paid)>
+        paid_events: Map<
+            ContractAddress, (u256, u256)
+        >, // map<user_address, (event_id, amount_paid)>
         paid_events_amount: Map<u256, u256>, // map<event_id, total_amount>
         paid_event_ticket_count: Map<u256, u256>, // map<event_id, count_number_of_ticket>
         event_payment_token: ContractAddress
