@@ -293,8 +293,12 @@ pub mod ChainEvents {
         fn paid_event_ticket_counts(self: @ContractState) -> u256 {
             0
         }
-        fn event_total_amount_paid(self: @ContractState) -> u256 {
-            0
+        fn event_total_amount_paid(self: @ContractState, event_id: u256) -> u256 {
+            let caller = get_caller_address();
+            let attendee_registration = self.attendee_event_details.read((event_id, caller));
+            assert(attendee_registration.attendee_address == caller, NOT_REGISTERED);
+            let event = self.event_details.read(event_id);
+            event.paid_amount
         }
 
         /// @notice Upgrades the contract implementation

@@ -488,3 +488,26 @@ fn test_unregister_from_event() {
 
     stop_cheat_caller_address(event_contract_address);
 }
+
+#[test]
+fn test_event_total_amount_paid() {
+    let event_contract_address = __setup__();
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
+
+    let event_id = event_dispatcher.add_event("bitcoin dev meetup", "Dan Marna road");
+    assert(event_id == 1, 'Event was not created');
+    stop_cheat_caller_address(event_contract_address);
+
+    // Use a new user(caller) to register for event & rsvp for event
+    let caller: ContractAddress = starknet::contract_address_const::<0x123626789>();
+    start_cheat_caller_address(event_contract_address, caller);
+    event_dispatcher.register_for_event(event_id);
+
+    let paid_amount = event_dispatcher.event_total_amount_paid(event_id);
+
+    //assert(attendee_registration_details.attendee_address == caller, 'attendee_address mismatch');
+    assert(paid_amount == 0, 'paid amount should be zero');
+    stop_cheat_caller_address(event_contract_address);
+}
