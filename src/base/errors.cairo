@@ -15,4 +15,5 @@ pub mod Errors {
 
     pub const NOT_A_PAID_EVENT: felt252 = 'Not a Paid Event';
     pub const TRANSFER_FAILED: felt252 = 'Transfer Failed';
+    pub const PAYMENT_TOKEN_NOT_SET: felt252 = 'Payment Token Not Set';
 }
