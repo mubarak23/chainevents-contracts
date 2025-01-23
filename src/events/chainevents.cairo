@@ -8,7 +8,7 @@ use core::num::traits::zero::Zero;
     use chainevents_contracts::base::types::{EventDetails, EventRegistration, EventType};
     use chainevents_contracts::base::errors::Errors::{
         ZERO_ADDRESS_CALLER, NOT_OWNER, CLOSED_EVENT, ALREADY_REGISTERED, NOT_REGISTERED,
-        ALREADY_RSVP, INVALID_EVENT, EVENT_CLOSED, TRANSFER_FAILED
+        ALREADY_RSVP, INVALID_EVENT, EVENT_CLOSED, TRANSFER_FAILED, NOT_A_PAID_EVENT
     };
     use chainevents_contracts::interfaces::IEvent::IEvent;
     use core::starknet::{
@@ -303,7 +303,7 @@ use core::num::traits::zero::Zero;
             let attendee_event = self.attendee_event_details.entry((event_id, caller)).read();
 
             assert(caller == attendee_event.attendee_address, NOT_REGISTERED);
-            assert(event.event_type == EventType::Paid, INVALID_EVENT);
+            assert(event.event_type == EventType::Paid, NOT_A_PAID_EVENT);
             assert(self.event_payment_token.read() != contract_address_const::<0>(), 'payment token not set');
 
             self._pay_for_event(event.event_id, event.paid_amount, caller);

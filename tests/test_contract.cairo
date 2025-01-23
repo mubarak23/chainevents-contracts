@@ -539,3 +539,43 @@ fn test_pay_for_event() {
     assert(payment_token.balance_of(event_contract_address) == paid_amount, 'payment failed');
     assert(payment_token.balance_of(user_2) == 0, 'deduction failed');
 }
+
+#[test]
+#[should_panic(expected: 'Not a Paid Event')]
+fn test_pay_for_event_should_panic_for_free_event() {
+    let event_contract_address = __setup__();
+    let payment_token_address = deploy_token_contract();
+
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+    let payment_token = IERC20Dispatcher { contract_address: payment_token_address };
+
+    let owner = OWNER();
+    let user_1 = USER_ONE.try_into().unwrap();
+    let user_2 = USER_TWO.try_into().unwrap();
+
+    // Contract owner  set payment token
+    start_cheat_caller_address(event_contract_address, owner);
+    event_dispatcher.set_payment_token(payment_token_address);
+    stop_cheat_caller_address(event_contract_address);
+    
+    // user one adds an event
+    start_cheat_caller_address(event_contract_address, user_1);
+    let event_id = event_dispatcher.add_event("bitcoin dev meetup", "Dan Marna road");
+    assert(event_id == 1, 'Event was not created');
+    stop_cheat_caller_address(event_contract_address);
+
+    let paid_amount: u256 = 1000000_u256;
+
+    // user two mints token for payment and approves event contract to spend token
+    start_cheat_caller_address(payment_token_address, user_2);
+    payment_token.mint(user_2, paid_amount);
+    payment_token.approve(event_contract_address, paid_amount);
+    assert(payment_token.allowance(user_2, event_contract_address) == paid_amount, 'approval failed');
+    stop_cheat_caller_address(payment_token_address);
+
+    // user two register's and pay's for an event
+    start_cheat_caller_address(event_contract_address, user_2);
+    event_dispatcher.register_for_event(event_id);
+    event_dispatcher.pay_for_event(event_id);
+    stop_cheat_caller_address(event_contract_address);
+}
