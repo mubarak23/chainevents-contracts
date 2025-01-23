@@ -1,5 +1,5 @@
 #[starknet::contract]
-pub mod RewardToken {
+pub mod PaymentToken {
     use starknet::event::EventEmitter;
     use starknet::{ContractAddress, get_caller_address};
     use core::starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess, Map, StoragePathEntry};
@@ -44,14 +44,14 @@ pub mod RewardToken {
 
     #[constructor]
     fn constructor(ref self: ContractState) {
-        self.token_name.write("Reward Token");
-        self.symbol.write("RWT");
+        self.token_name.write("Payment Token");
+        self.symbol.write("PMT");
         self.decimal.write(18);
         self.owner.write(get_caller_address());
     }
 
     #[abi(embed_v0)]
-    impl RewardTokenImpl of IERC20<ContractState> {
+    impl PaymentTokenImpl of IERC20<ContractState> {
         fn total_supply(self: @ContractState) -> u256 {
             self.total_supply.read()
         }

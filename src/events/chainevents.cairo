@@ -3,7 +3,8 @@
 /// @notice A contract for creating and managing events with registration and attendance tracking
 /// @dev Implements Ownable and Upgradeable components from OpenZeppelin
 pub mod ChainEvents {
-    use core::num::traits::zero::Zero;
+    use openzeppelin_access::ownable::interface::IOwnable;
+use core::num::traits::zero::Zero;
     use chainevents_contracts::base::types::{EventDetails, EventRegistration, EventType};
     use chainevents_contracts::base::errors::Errors::{
         ZERO_ADDRESS_CALLER, NOT_OWNER, CLOSED_EVENT, ALREADY_REGISTERED, NOT_REGISTERED,
@@ -12,7 +13,7 @@ pub mod ChainEvents {
     use chainevents_contracts::interfaces::IEvent::IEvent;
     use core::starknet::{
         ContractAddress, get_caller_address, syscalls::deploy_syscall, ClassHash,
-        get_block_timestamp, get_contract_address,
+        get_block_timestamp, get_contract_address, contract_address_const,
         storage::{Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePathEntry}
     };
     use openzeppelin::access::ownable::OwnableComponent;
@@ -303,8 +304,9 @@ pub mod ChainEvents {
 
             assert(caller == attendee_event.attendee_address, NOT_REGISTERED);
             assert(event.event_type == EventType::Paid, INVALID_EVENT);
+            assert(self.event_payment_token.read() != contract_address_const::<0>(), 'payment token not set');
 
-            // self._pay_for_event(event.event_id, event.paid_amount, caller);
+            self._pay_for_event(event.event_id, event.paid_amount, caller);
 
             self.emit(EventPayment { event_id: event.event_id, caller, amount: event.paid_amount });
         }
@@ -319,6 +321,11 @@ pub mod ChainEvents {
         }
         fn event_total_amount_paid(self: @ContractState) -> u256 {
             0
+        }
+
+        fn set_payment_token(ref self: ContractState, payment_token_address: ContractAddress) {
+            assert(get_caller_address() == self.owner(), NOT_OWNER);
+            self.event_payment_token.write(payment_token_address);
         }
 
         /// @notice Upgrades the contract implementation
