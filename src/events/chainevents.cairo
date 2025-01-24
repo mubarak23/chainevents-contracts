@@ -284,14 +284,17 @@ pub mod ChainEvents {
             self.attendee_event_registration_counts.read(event_id)
         }
 
-        fn pay_for_event(ref self: ContractState, event_id: u256) {}
+        fn pay_for_event(ref self: ContractState, event_id: u256) {
+            let prev_num_of_paid_tickets = self.paid_event_ticket_count.read(event_id)
+            self.paid_event_ticket_count.write(event_id, prev_num_of_paid_tickets + 1);
+        }
         fn withdraw_paid_event_amount(ref self: ContractState, event_id: u256) {}
 
         fn fetch_user_paid_event(self: @ContractState) -> (u256, u256) {
             (0, 0)
         }
-        fn paid_event_ticket_counts(self: @ContractState) -> u256 {
-            0
+        fn paid_event_ticket_counts(self: @ContractState, event_id: u256) -> u256 {
+            self.paid_event_ticket_count.read(event_id)
         }
         fn event_total_amount_paid(self: @ContractState) -> u256 {
             0
