@@ -141,9 +141,10 @@ pub mod ChainEvents {
     /// @notice Initializes the Events contract
     /// @dev Sets the initial event count to 0
     #[constructor]
-    fn constructor(ref self: ContractState, owner: ContractAddress) {
+    fn constructor(ref self: ContractState, owner: ContractAddress, payment_token_address: ContractAddress) {
         self.event_counts.write(0);
         self.ownable.initializer(owner);
+        self.event_payment_token.write(payment_token_address);
     }
 
     #[abi(embed_v0)]
@@ -325,11 +326,6 @@ pub mod ChainEvents {
         }
         fn event_total_amount_paid(self: @ContractState) -> u256 {
             0
-        }
-
-        fn set_payment_token(ref self: ContractState, payment_token_address: ContractAddress) {
-            assert(get_caller_address() == self.owner(), NOT_OWNER);
-            self.event_payment_token.write(payment_token_address);
         }
 
         /// @notice Upgrades the contract implementation

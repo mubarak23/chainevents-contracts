@@ -26,7 +26,6 @@ pub trait IEvent<TContractState> {
     fn fetch_user_paid_event(self: @TContractState) -> (u256, u256);
     fn paid_event_ticket_counts(self: @TContractState) -> u256;
     fn event_total_amount_paid(self: @TContractState) -> u256;
-    fn set_payment_token(ref self: TContractState, payment_token_address: ContractAddress);
 
     fn upgrade(ref self: TContractState, new_class_hash: ClassHash);
 }

@@ -26,7 +26,7 @@ fn OWNER() -> ContractAddress {
 // *************************************************************************
 //                              SETUP
 // *************************************************************************
-fn __setup__() -> ContractAddress {
+fn __setup__(strk_token: ContractAddress) -> ContractAddress {
     // deploy  events
     let events_class_hash = declare("ChainEvents").unwrap().contract_class();
 
@@ -35,6 +35,7 @@ fn __setup__() -> ContractAddress {
     let owner = OWNER();
 
     owner.serialize(ref events_constructor_calldata);
+    strk_token.serialize(ref events_constructor_calldata);
 
     let (event_contract_address, _) = events_class_hash
         .deploy(@events_constructor_calldata)
@@ -51,7 +52,8 @@ fn deploy_token_contract() -> ContractAddress {
 
 #[test]
 fn test_add_event() {
-    let event_contract_address = __setup__();
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
 
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
 
@@ -63,7 +65,8 @@ fn test_add_event() {
 
 #[test]
 fn test_event_registration() {
-    let event_contract_address = __setup__();
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
 
     let user_one_address: ContractAddress = USER_ONE.try_into().unwrap();
@@ -97,7 +100,8 @@ fn test_event_registration() {
 }
 
 fn test_register_for_event() {
-    let event_contract_address = __setup__();
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
 
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
 
@@ -118,7 +122,8 @@ fn test_register_for_event() {
 #[test]
 #[should_panic(expected: 'rsvp only for registered event')]
 fn test_should_panic_on_rsvp_for_event_that_was_not_registered_for() {
-    let event_contract_address = __setup__();
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
 
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
 
@@ -135,7 +140,8 @@ fn test_should_panic_on_rsvp_for_event_that_was_not_registered_for() {
 
 #[test]
 fn test_rsvp_for_event_should_emit_event_on_success() {
-    let event_contract_address = __setup__();
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
 
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
 
@@ -167,7 +173,8 @@ fn test_rsvp_for_event_should_emit_event_on_success() {
 #[test]
 #[should_panic(expected: 'rsvp already exist')]
 fn test_should_panic_on_rsvp_for_event_twice() {
-    let event_contract_address = __setup__();
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
 
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
 
@@ -196,7 +203,8 @@ fn test_should_panic_on_rsvp_for_event_twice() {
 
 #[test]
 fn test_event_count_increase() {
-    let event_contract_address = __setup__();
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
 
     start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
@@ -212,7 +220,8 @@ fn test_event_count_increase() {
 
 #[test]
 fn test_event_emission() {
-    let event_contract_address = __setup__();
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
 
     start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
@@ -239,7 +248,8 @@ fn test_event_emission() {
 #[test]
 #[available_gas(2000000)]
 fn test_event_owner() {
-    let event_contract_address = __setup__();
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
 
     let user_address: ContractAddress = USER_ONE.try_into().unwrap();
@@ -256,7 +266,8 @@ fn test_event_owner() {
 
 #[test]
 fn test_event_details() {
-    let event_contract_address = __setup__();
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
 
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
     let user_address: ContractAddress = USER_ONE.try_into().unwrap();
@@ -298,7 +309,8 @@ fn test_event_details() {
 #[test]
 #[should_panic(expected: 'Caller Not Owner')]
 fn test_registered_attendees_only_owner() {
-    let event_contract_address = __setup__();
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
 
     // USER_ONE adds event
@@ -318,7 +330,8 @@ fn test_registered_attendees_only_owner() {
 
 #[test]
 fn test_attendees_registered_updates_correctly() {
-    let event_contract_address = __setup__();
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
 
     // USER_ONE adds event
@@ -345,7 +358,8 @@ fn test_attendees_registered_updates_correctly() {
 
 #[test]
 fn test_end_event_registration_success() {
-    let event_contract_address = __setup__();
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
 
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
 
@@ -364,7 +378,8 @@ fn test_end_event_registration_success() {
 #[test]
 #[should_panic(expected: 'Caller Not Owner')]
 fn test_not_owner_end_event_registration() {
-    let event_contract_address = __setup__();
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
 
     start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
@@ -380,7 +395,8 @@ fn test_not_owner_end_event_registration() {
 #[test]
 #[should_panic(expected: 'Invalid event')]
 fn test_end_event_registration_for_invalid_event() {
-    let event_contract_address = __setup__();
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
 
     start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
@@ -395,7 +411,8 @@ fn test_end_event_registration_for_invalid_event() {
 
 #[test]
 fn test_event_details_after_end_event_registration() {
-    let event_contract_address = __setup__();
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
 
     start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
@@ -416,7 +433,8 @@ fn test_event_details_after_end_event_registration() {
 
 #[test]
 fn test_end_event_emission() {
-    let event_contract_address = __setup__();
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
 
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
 
@@ -443,7 +461,8 @@ fn test_end_event_emission() {
 
 #[test]
 fn test_upgrade_event() {
-    let event_contract_address = __setup__();
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
 
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
 
@@ -460,7 +479,8 @@ fn test_upgrade_event() {
 #[test]
 #[should_panic(expected: 'Caller Not Owner')]
 fn test_upgrade_event_with_wrong_owner() {
-    let event_contract_address = __setup__();
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
 
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
 
@@ -475,7 +495,8 @@ fn test_upgrade_event_with_wrong_owner() {
 
 #[test]
 fn test_unregister_from_event() {
-    let event_contract_address = __setup__();
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
 
     start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
@@ -498,20 +519,14 @@ fn test_unregister_from_event() {
 
 #[test]
 fn test_pay_for_event() {
-    let event_contract_address = __setup__();
-    let payment_token_address = deploy_token_contract();
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
 
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
-    let payment_token = IERC20Dispatcher { contract_address: payment_token_address };
+    let payment_token = IERC20Dispatcher { contract_address: strk_token };
 
-    let owner = OWNER();
     let user_1 = USER_ONE.try_into().unwrap();
     let user_2 = USER_TWO.try_into().unwrap();
-
-    // Contract owner  set payment token
-    start_cheat_caller_address(event_contract_address, owner);
-    event_dispatcher.set_payment_token(payment_token_address);
-    stop_cheat_caller_address(event_contract_address);
 
     // user one adds an event
     start_cheat_caller_address(event_contract_address, user_1);
@@ -524,13 +539,13 @@ fn test_pay_for_event() {
     stop_cheat_caller_address(event_contract_address);
 
     // user two mints token for payment and approves event contract to spend token
-    start_cheat_caller_address(payment_token_address, user_2);
+    start_cheat_caller_address(strk_token, user_2);
     payment_token.mint(user_2, paid_amount);
     payment_token.approve(event_contract_address, paid_amount);
     assert(
         payment_token.allowance(user_2, event_contract_address) == paid_amount, 'approval failed'
     );
-    stop_cheat_caller_address(payment_token_address);
+    stop_cheat_caller_address(strk_token);
 
     // user two register's and pay's for an event
     start_cheat_caller_address(event_contract_address, user_2);
@@ -544,21 +559,14 @@ fn test_pay_for_event() {
 
 #[test]
 fn test_pay_for_event_by_event_owner() {
-    let event_contract_address = __setup__();
-    let payment_token_address = deploy_token_contract();
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
 
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
-    let payment_token = IERC20Dispatcher { contract_address: payment_token_address };
-
-    let owner = OWNER();
+    let payment_token = IERC20Dispatcher { contract_address: strk_token };
 
     // user1 is the event owner that adds an event
     let user_1 = USER_ONE.try_into().unwrap();
-
-    // Contract owner  set payment token
-    start_cheat_caller_address(event_contract_address, owner);
-    event_dispatcher.set_payment_token(payment_token_address);
-    stop_cheat_caller_address(event_contract_address);
 
     // user one adds an event
     start_cheat_caller_address(event_contract_address, user_1);
@@ -571,13 +579,13 @@ fn test_pay_for_event_by_event_owner() {
     stop_cheat_caller_address(event_contract_address);
 
     // user one mints token for payment and approves event contract to spend token
-    start_cheat_caller_address(payment_token_address, user_1);
+    start_cheat_caller_address(strk_token, user_1);
     payment_token.mint(user_1, paid_amount);
     payment_token.approve(event_contract_address, paid_amount);
     assert(
         payment_token.allowance(user_1, event_contract_address) == paid_amount, 'approval failed'
     );
-    stop_cheat_caller_address(payment_token_address);
+    stop_cheat_caller_address(strk_token);
 
     // user one register's and pay's for an event
     start_cheat_caller_address(event_contract_address, user_1);
@@ -591,20 +599,14 @@ fn test_pay_for_event_by_event_owner() {
 
 #[test]
 fn test_pay_for_event_emits_event_on_success() {
-    let event_contract_address = __setup__();
-    let payment_token_address = deploy_token_contract();
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
 
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
-    let payment_token = IERC20Dispatcher { contract_address: payment_token_address };
+    let payment_token = IERC20Dispatcher { contract_address: strk_token };
 
-    let owner = OWNER();
     let user_1 = USER_ONE.try_into().unwrap();
     let user_2 = USER_TWO.try_into().unwrap();
-
-    // Contract owner  set payment token
-    start_cheat_caller_address(event_contract_address, owner);
-    event_dispatcher.set_payment_token(payment_token_address);
-    stop_cheat_caller_address(event_contract_address);
 
     // user one adds an event
     start_cheat_caller_address(event_contract_address, user_1);
@@ -617,13 +619,13 @@ fn test_pay_for_event_emits_event_on_success() {
     stop_cheat_caller_address(event_contract_address);
 
     // user two mints token for payment and approves event contract to spend token
-    start_cheat_caller_address(payment_token_address, user_2);
+    start_cheat_caller_address(strk_token, user_2);
     payment_token.mint(user_2, paid_amount);
     payment_token.approve(event_contract_address, paid_amount);
     assert(
         payment_token.allowance(user_2, event_contract_address) == paid_amount, 'approval failed'
     );
-    stop_cheat_caller_address(payment_token_address);
+    stop_cheat_caller_address(strk_token);
 
     let mut spy = spy_events();
 
@@ -642,20 +644,14 @@ fn test_pay_for_event_emits_event_on_success() {
 #[test]
 #[should_panic(expected: 'Not a Paid Event')]
 fn test_pay_for_event_should_panic_for_free_event() {
-    let event_contract_address = __setup__();
-    let payment_token_address = deploy_token_contract();
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
 
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
-    let payment_token = IERC20Dispatcher { contract_address: payment_token_address };
+    let payment_token = IERC20Dispatcher { contract_address: strk_token };
 
-    let owner = OWNER();
     let user_1 = USER_ONE.try_into().unwrap();
     let user_2 = USER_TWO.try_into().unwrap();
-
-    // Contract owner  set payment token
-    start_cheat_caller_address(event_contract_address, owner);
-    event_dispatcher.set_payment_token(payment_token_address);
-    stop_cheat_caller_address(event_contract_address);
 
     // user one adds an event
     start_cheat_caller_address(event_contract_address, user_1);
@@ -666,51 +662,13 @@ fn test_pay_for_event_should_panic_for_free_event() {
     let paid_amount: u256 = 1000000_u256;
 
     // user two mints token for payment and approves event contract to spend token
-    start_cheat_caller_address(payment_token_address, user_2);
+    start_cheat_caller_address(strk_token, user_2);
     payment_token.mint(user_2, paid_amount);
     payment_token.approve(event_contract_address, paid_amount);
     assert(
         payment_token.allowance(user_2, event_contract_address) == paid_amount, 'approval failed'
     );
-    stop_cheat_caller_address(payment_token_address);
-
-    // user two register's and pay's for an event
-    start_cheat_caller_address(event_contract_address, user_2);
-    event_dispatcher.register_for_event(event_id);
-    event_dispatcher.pay_for_event(event_id);
-    stop_cheat_caller_address(event_contract_address);
-}
-
-#[test]
-#[should_panic(expected: 'Payment Token Not Set')]
-fn test_pay_for_event_should_panic_when_payment_token_is_not_set() {
-    let event_contract_address = __setup__();
-    let payment_token_address = deploy_token_contract();
-
-    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
-    let payment_token = IERC20Dispatcher { contract_address: payment_token_address };
-
-    let owner = OWNER();
-    let user_1 = USER_ONE.try_into().unwrap();
-    let user_2 = USER_TWO.try_into().unwrap();
-
-    // user one adds an event
-    start_cheat_caller_address(event_contract_address, user_1);
-    let event_id = event_dispatcher.add_event("bitcoin dev meetup", "Dan Marna road");
-    assert(event_id == 1, 'Event was not created');
-
-    let paid_amount: u256 = 1000000_u256;
-    event_dispatcher.upgrade_event(event_id, paid_amount);
-    stop_cheat_caller_address(event_contract_address);
-
-    // user two mints token for payment and approves event contract to spend token
-    start_cheat_caller_address(payment_token_address, user_2);
-    payment_token.mint(user_2, paid_amount);
-    payment_token.approve(event_contract_address, paid_amount);
-    assert(
-        payment_token.allowance(user_2, event_contract_address) == paid_amount, 'approval failed'
-    );
-    stop_cheat_caller_address(payment_token_address);
+    stop_cheat_caller_address(strk_token);
 
     // user two register's and pay's for an event
     start_cheat_caller_address(event_contract_address, user_2);
