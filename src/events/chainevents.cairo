@@ -9,13 +9,13 @@ pub mod ChainEvents {
     use chainevents_contracts::base::errors::Errors::{
         ZERO_ADDRESS_CALLER, NOT_OWNER, CLOSED_EVENT, ALREADY_REGISTERED, NOT_REGISTERED,
         ALREADY_RSVP, INVALID_EVENT, EVENT_CLOSED, TRANSFER_FAILED, NOT_A_PAID_EVENT,
-        PAYMENT_TOKEN_NOT_SET
+        PAYMENT_TOKEN_NOT_SET,
     };
     use chainevents_contracts::interfaces::IEvent::IEvent;
     use core::starknet::{
         ContractAddress, get_caller_address, syscalls::deploy_syscall, ClassHash,
         get_block_timestamp, get_contract_address, contract_address_const,
-        storage::{Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePathEntry}
+        storage::{Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePathEntry},
     };
     use openzeppelin::access::ownable::OwnableComponent;
     use openzeppelin_upgrades::UpgradeableComponent;
@@ -44,7 +44,7 @@ pub mod ChainEvents {
         event_details: Map<u256, EventDetails>, // map(event_id, EventDetailsParams)
         event_registrations: Map<ContractAddress, u256>, // map<attendeeAddress, event_id>
         attendee_event_details: Map<
-            (u256, ContractAddress), EventRegistration
+            (u256, ContractAddress), EventRegistration,
         >, // map <(event_id, attendeeAddress), EventRegistration>
         // paid_events: Map<
         //     (ContractAddress, u256), u256
@@ -52,11 +52,11 @@ pub mod ChainEvents {
         registered_attendees: Map<u256, u256>, // map<event_id, registered_attendees_count>
         attendee_event_registration_counts: Map<u256, u256>, // map<event_id, registration_count>
         paid_events: Map<
-            ContractAddress, (u256, u256)
+            ContractAddress, (u256, u256),
         >, // map<user_address, (event_id, amount_paid)>
         paid_events_amount: Map<u256, u256>, // map<event_id, total_amount>
         paid_event_ticket_count: Map<u256, u256>, // map<event_id, count_number_of_ticket>
-        event_payment_token: ContractAddress
+        event_payment_token: ContractAddress,
     }
 
     /// @notice Events emitted by the contract
@@ -83,7 +83,7 @@ pub mod ChainEvents {
         pub name: ByteArray,
         pub event_id: u256,
         pub location: ByteArray,
-        pub event_owner: ContractAddress
+        pub event_owner: ContractAddress,
     }
 
     /// @notice Event emitted when a user registers for an event
@@ -91,7 +91,7 @@ pub mod ChainEvents {
     pub struct RegisteredForEvent {
         pub event_id: u256,
         pub event_name: ByteArray,
-        pub user_address: ContractAddress
+        pub user_address: ContractAddress,
     }
 
     /// @notice Event emitted when registration for an event is closed
@@ -99,14 +99,14 @@ pub mod ChainEvents {
     pub struct EndEventRegistration {
         pub event_id: u256,
         pub event_name: ByteArray,
-        pub event_owner: ContractAddress
+        pub event_owner: ContractAddress,
     }
 
     /// @notice Event emitted when an attendee RSVPs for an event
     #[derive(Drop, starknet::Event)]
     pub struct RSVPForEvent {
         pub event_id: u256,
-        pub attendee_address: ContractAddress
+        pub attendee_address: ContractAddress,
     }
 
     /// @notice Event emitted when an event is upgraded (e.g., from free to paid)
@@ -115,34 +115,34 @@ pub mod ChainEvents {
         pub event_id: u256,
         pub event_name: ByteArray,
         pub paid_amount: u256,
-        pub event_type: EventType
+        pub event_type: EventType,
     }
 
     #[derive(Drop, starknet::Event)]
     pub struct UnregisteredEvent {
         pub event_id: u256,
-        pub user_address: ContractAddress
+        pub user_address: ContractAddress,
     }
 
 
     #[derive(Drop, starknet::Event)]
     pub struct EventAttendanceMark {
         pub event_id: u256,
-        pub user_address: ContractAddress
+        pub user_address: ContractAddress,
     }
 
     #[derive(Drop, starknet::Event)]
     pub struct EventPayment {
         pub event_id: u256,
         pub caller: ContractAddress,
-        pub amount: u256
+        pub amount: u256,
     }
 
     /// @notice Initializes the Events contract
     /// @dev Sets the initial event count to 0
     #[constructor]
     fn constructor(
-        ref self: ContractState, owner: ContractAddress, payment_token_address: ContractAddress
+        ref self: ContractState, owner: ContractAddress, payment_token_address: ContractAddress,
     ) {
         self.event_counts.write(0);
         self.ownable.initializer(owner);
@@ -170,7 +170,7 @@ pub mod ChainEvents {
                         name: name,
                         location: location,
                         event_owner: event_owner,
-                    }
+                    },
                 );
             event_id
         }
@@ -187,8 +187,8 @@ pub mod ChainEvents {
             self
                 .emit(
                     RegisteredForEvent {
-                        event_id: event_id, event_name: event_name, user_address: caller
-                    }
+                        event_id: event_id, event_name: event_name, user_address: caller,
+                    },
                 );
         }
 
@@ -210,7 +210,7 @@ pub mod ChainEvents {
 
             let event_name = self._end_event_registration(caller.clone(), event_id.clone());
 
-            self.emit(EndEventRegistration { event_id, event_name, event_owner: caller, });
+            self.emit(EndEventRegistration { event_id, event_name, event_owner: caller });
         }
 
         /// @notice Allows an attendee to RSVP for an event
@@ -221,7 +221,7 @@ pub mod ChainEvents {
 
             self._rsvp_for_event(event_id.clone(), caller.clone());
 
-            self.emit(RSVPForEvent { event_id, attendee_address: caller, });
+            self.emit(RSVPForEvent { event_id, attendee_address: caller });
         }
 
         /// @notice Upgrades an event from free to paid
@@ -239,7 +239,7 @@ pub mod ChainEvents {
                         event_name: event_name,
                         paid_amount: paid_amount,
                         event_type: EventType::Paid,
-                    }
+                    },
                 );
         }
 
@@ -283,9 +283,10 @@ pub mod ChainEvents {
         /// @dev Only callable by event owner
         fn attendees_registered(self: @ContractState, event_id: u256) -> u256 {
             let caller = get_caller_address();
-            let event_owner = self.event_owners.read(event_id);
-            assert(caller == event_owner, NOT_OWNER);
-            self.registered_attendees.read(event_id)
+            // let event_owner = self.event_owners.read(event_id);
+            // assert(caller == event_owner, NOT_OWNER);
+            // self.registered_attendees.read(event_id)
+            self._attendees_registered(event_id, caller)
         }
 
         /// @notice Gets the total registration count for an event
@@ -310,7 +311,7 @@ pub mod ChainEvents {
             assert(event.event_type == EventType::Paid, NOT_A_PAID_EVENT);
             assert(
                 self.event_payment_token.read() != contract_address_const::<0>(),
-                PAYMENT_TOKEN_NOT_SET
+                PAYMENT_TOKEN_NOT_SET,
             );
 
             self._pay_for_event(event.event_id, event.paid_amount, caller);
@@ -346,17 +347,17 @@ pub mod ChainEvents {
         /// @param event_id The ID of the event to associate with the NFT
         /// @return Address of the deployed NFT contract
         fn deploy_event_nft(
-            ref self: ContractState, event_nft_classhash: ClassHash, event_id: u256
+            ref self: ContractState, event_nft_classhash: ClassHash, event_id: u256,
         ) -> ContractAddress {
             let mut constructor_calldata: Array<felt252> = array![
-                event_id.low.into(), event_id.high.into()
+                event_id.low.into(), event_id.high.into(),
             ];
 
             let (event_nft, _) = deploy_syscall(
                 event_nft_classhash,
                 get_block_timestamp().try_into().unwrap(),
                 constructor_calldata.span(),
-                false
+                false,
             )
                 .unwrap();
             event_nft
@@ -371,7 +372,7 @@ pub mod ChainEvents {
             ref self: ContractState,
             event_name: ByteArray,
             event_location: ByteArray,
-            event_owner: ContractAddress
+            event_owner: ContractAddress,
         ) -> u256 {
             let event_id = self.event_counts.read() + 1;
             self.event_counts.write(event_id);
@@ -398,7 +399,7 @@ pub mod ChainEvents {
         }
 
         fn _register_for_event(
-            ref self: ContractState, caller: ContractAddress, event_id: u256
+            ref self: ContractState, caller: ContractAddress, event_id: u256,
         ) -> ByteArray {
             let _event = self.event_details.read(event_id);
 
@@ -416,7 +417,7 @@ pub mod ChainEvents {
                 has_rsvp: false,
                 nft_contract_address: caller, // nft contract address needed
                 nft_token_id: 0,
-                organizer: _event.organizer
+                organizer: _event.organizer,
             };
 
             self.attendee_event_details.write((event_id, caller), _attendee_event_details);
@@ -433,7 +434,7 @@ pub mod ChainEvents {
         }
 
         fn _unregister_from_event(
-            ref self: ContractState, event_id: u256, caller: ContractAddress
+            ref self: ContractState, event_id: u256, caller: ContractAddress,
         ) {
             let event = self.event_details.read(event_id);
             assert(!event.is_closed, CLOSED_EVENT);
@@ -452,8 +453,8 @@ pub mod ChainEvents {
                         has_rsvp: false,
                         nft_contract_address: zero_address,
                         nft_token_id: 0,
-                        organizer: zero_address
-                    }
+                        organizer: zero_address,
+                    },
                 );
 
             self.event_registrations.write(caller, 0);
@@ -476,7 +477,7 @@ pub mod ChainEvents {
         }
 
         fn _upgrade_event(
-            ref self: ContractState, caller: ContractAddress, event_id: u256, paid_amount: u256
+            ref self: ContractState, caller: ContractAddress, event_id: u256, paid_amount: u256,
         ) -> ByteArray {
             let event_owner = self.event_owners.read(event_id);
             assert(caller == event_owner, NOT_OWNER);
@@ -506,7 +507,7 @@ pub mod ChainEvents {
         /// @param event_amount The class amount to be paid
         /// @param caller Address of the user calling the pay_for_event() function
         fn _pay_for_event(
-            ref self: ContractState, event_id: u256, event_amount: u256, caller: ContractAddress
+            ref self: ContractState, event_id: u256, event_amount: u256, caller: ContractAddress,
         ) {
             let this_contract = get_contract_address();
             let token = ERC20ABIDispatcher { contract_address: self.event_payment_token.read() };
@@ -522,6 +523,13 @@ pub mod ChainEvents {
 
             self.paid_events_amount.entry(event_id).write(total_event_amount_paid + event_amount);
             self.paid_event_ticket_count.entry(event_id).write(prev_event_ticket_count + 1);
+        }
+        fn _attendees_registered(
+            self: @ContractState, event_id: u256, caller: ContractAddress,
+        ) -> u256 {
+            let event_owner = self.event_owners.read(event_id);
+            assert(caller == event_owner, NOT_OWNER);
+            self.registered_attendees.read(event_id)
         }
     }
 }
