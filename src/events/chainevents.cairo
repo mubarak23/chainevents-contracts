@@ -529,14 +529,14 @@ pub mod ChainEvents {
                 .read((event_id, get_caller_address()));
 
             attendee_event_details
-        },
-         fn _attendees_registered(
+        }
+        fn _attendees_registered(
             self: @ContractState, event_id: u256, caller: ContractAddress,
         ) -> u256 {
             let event_owner = self.event_owners.read(event_id);
             assert(caller == event_owner, NOT_OWNER);
             self.registered_attendees.read(event_id)
-      },
+        }
     }
 }
 
