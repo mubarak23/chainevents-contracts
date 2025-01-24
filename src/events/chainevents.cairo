@@ -288,10 +288,7 @@ pub mod ChainEvents {
         /// @return Total registration count
         /// @dev Only callable by event owner
         fn event_registration_count(self: @ContractState, event_id: u256) -> u256 {
-            let caller = get_caller_address();
-            let event_owner = self.event_owners.read(event_id);
-            assert(caller == event_owner, NOT_OWNER);
-            self.attendee_event_registration_counts.read(event_id)
+            self._event_registration_count(event_id)
         }
 
         /// @notice Allows users to pay for an event
@@ -536,6 +533,13 @@ pub mod ChainEvents {
             let event_owner = self.event_owners.read(event_id);
             assert(caller == event_owner, NOT_OWNER);
             self.registered_attendees.read(event_id)
+        }
+
+        fn _event_registration_count(self: @ContractState, event_id: u256) -> u256 {
+            let caller = get_caller_address();
+            let event_owner = self.event_owners.read(event_id);
+            assert(caller == event_owner, NOT_OWNER);
+            self.attendee_event_registration_counts.read(event_id)
         }
     }
 }
