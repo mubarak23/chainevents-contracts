@@ -286,7 +286,7 @@ pub mod ChainEvents {
             // let event_owner = self.event_owners.read(event_id);
             // assert(caller == event_owner, NOT_OWNER);
             // self.registered_attendees.read(event_id)
-            _attendees_registered(event_id, caller)
+            self._attendees_registered(event_id, caller)
         }
 
         /// @notice Gets the total registration count for an event
