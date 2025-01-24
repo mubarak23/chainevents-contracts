@@ -266,13 +266,7 @@ pub mod ChainEvents {
         /// @param event_id The ID of the event to query
         /// @return EventRegistration struct containing registration details
         fn attendee_event_details(self: @ContractState, event_id: u256) -> EventRegistration {
-            let register_event_id = self.event_registrations.read(get_caller_address());
-
-            assert(event_id == register_event_id, 'different event_id');
-
-            let attendee_event_details = self
-                .attendee_event_details
-                .read((event_id, get_caller_address()));
+            let attendee_event_details = self._attendee_event_details(event_id.clone());
 
             attendee_event_details
         }
@@ -523,6 +517,18 @@ pub mod ChainEvents {
 
             self.paid_events_amount.entry(event_id).write(total_event_amount_paid + event_amount);
             self.paid_event_ticket_count.entry(event_id).write(prev_event_ticket_count + 1);
+        }
+
+        fn _attendee_event_details(self: @ContractState, event_id: u256) -> EventRegistration {
+            let register_event_id = self.event_registrations.read(get_caller_address());
+
+            assert(event_id == register_event_id, 'different event_id');
+
+            let attendee_event_details = self
+                .attendee_event_details
+                .read((event_id, get_caller_address()));
+
+            attendee_event_details
         }
         fn _attendees_registered(
             self: @ContractState, event_id: u256, caller: ContractAddress,
