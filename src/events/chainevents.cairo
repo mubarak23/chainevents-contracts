@@ -285,7 +285,7 @@ pub mod ChainEvents {
         }
 
         fn pay_for_event(ref self: ContractState, event_id: u256) {
-            let prev_num_of_paid_tickets = self.paid_event_ticket_count.read(event_id)
+            let prev_num_of_paid_tickets = self.paid_event_ticket_count.read(event_id);
             self.paid_event_ticket_count.write(event_id, prev_num_of_paid_tickets + 1);
         }
         fn withdraw_paid_event_amount(ref self: ContractState, event_id: u256) {}
