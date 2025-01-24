@@ -3,20 +3,23 @@
 /// @notice A contract for creating and managing events with registration and attendance tracking
 /// @dev Implements Ownable and Upgradeable components from OpenZeppelin
 pub mod ChainEvents {
+    use openzeppelin_access::ownable::interface::IOwnable;
     use core::num::traits::zero::Zero;
     use chainevents_contracts::base::types::{EventDetails, EventRegistration, EventType};
     use chainevents_contracts::base::errors::Errors::{
         ZERO_ADDRESS_CALLER, NOT_OWNER, CLOSED_EVENT, ALREADY_REGISTERED, NOT_REGISTERED,
-        ALREADY_RSVP, INVALID_EVENT, EVENT_CLOSED
+        ALREADY_RSVP, INVALID_EVENT, EVENT_CLOSED, TRANSFER_FAILED, NOT_A_PAID_EVENT,
+        PAYMENT_TOKEN_NOT_SET
     };
     use chainevents_contracts::interfaces::IEvent::IEvent;
     use core::starknet::{
         ContractAddress, get_caller_address, syscalls::deploy_syscall, ClassHash,
-        get_block_timestamp,
+        get_block_timestamp, get_contract_address, contract_address_const,
         storage::{Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePathEntry}
     };
     use openzeppelin::access::ownable::OwnableComponent;
     use openzeppelin_upgrades::UpgradeableComponent;
+    use openzeppelin::token::erc20::interface::{ERC20ABIDispatcher, ERC20ABIDispatcherTrait};
 
     component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
     component!(path: UpgradeableComponent, storage: upgradeable, event: UpgradeableEvent);
@@ -52,7 +55,8 @@ pub mod ChainEvents {
             ContractAddress, (u256, u256)
         >, // map<user_address, (event_id, amount_paid)>
         paid_events_amount: Map<u256, u256>, // map<event_id, total_amount>
-        paid_event_ticket_count: Map<u256, u256> // map<event_id, count_number_of_ticket>
+        paid_event_ticket_count: Map<u256, u256>, // map<event_id, count_number_of_ticket>
+        event_payment_token: ContractAddress
     }
 
     /// @notice Events emitted by the contract
@@ -70,6 +74,7 @@ pub mod ChainEvents {
         #[flat]
         UpgradeableEvent: UpgradeableComponent::Event,
         UnregisteredEvent: UnregisteredEvent,
+        EventPayment: EventPayment,
     }
 
     /// @notice Event emitted when a new event is created
@@ -126,12 +131,22 @@ pub mod ChainEvents {
         pub user_address: ContractAddress
     }
 
+    #[derive(Drop, starknet::Event)]
+    pub struct EventPayment {
+        pub event_id: u256,
+        pub caller: ContractAddress,
+        pub amount: u256
+    }
+
     /// @notice Initializes the Events contract
     /// @dev Sets the initial event count to 0
     #[constructor]
-    fn constructor(ref self: ContractState, owner: ContractAddress) {
+    fn constructor(
+        ref self: ContractState, owner: ContractAddress, payment_token_address: ContractAddress
+    ) {
         self.event_counts.write(0);
         self.ownable.initializer(owner);
+        self.event_payment_token.write(payment_token_address);
     }
 
     #[abi(embed_v0)]
@@ -284,7 +299,25 @@ pub mod ChainEvents {
             self.attendee_event_registration_counts.read(event_id)
         }
 
-        fn pay_for_event(ref self: ContractState, event_id: u256) {}
+        /// @notice Allows users to pay for an event
+        /// @param event_id: The id of the event to be paid for
+        fn pay_for_event(ref self: ContractState, event_id: u256) {
+            let caller = get_caller_address();
+            let event = self.event_details.entry(event_id).read();
+            let attendee_event = self.attendee_event_details.entry((event_id, caller)).read();
+
+            assert(caller == attendee_event.attendee_address, NOT_REGISTERED);
+            assert(event.event_type == EventType::Paid, NOT_A_PAID_EVENT);
+            assert(
+                self.event_payment_token.read() != contract_address_const::<0>(),
+                PAYMENT_TOKEN_NOT_SET
+            );
+
+            self._pay_for_event(event.event_id, event.paid_amount, caller);
+
+            self.emit(EventPayment { event_id: event.event_id, caller, amount: event.paid_amount });
+        }
+
         fn withdraw_paid_event_amount(ref self: ContractState, event_id: u256) {}
 
         fn fetch_user_paid_event(self: @ContractState) -> (u256, u256) {
@@ -453,6 +486,7 @@ pub mod ChainEvents {
             self.event_details.write(event_id, event_details.clone());
             event_details.name
         }
+
         fn _end_event_registration(
             ref self: ContractState, caller: ContractAddress, event_id: u256,
         ) -> ByteArray {
@@ -465,6 +499,29 @@ pub mod ChainEvents {
             event_details.is_closed = true;
             self.event_details.write(event_id, event_details.clone());
             event_details.name
+        }
+
+        /// @notice Pays for an event by transferring from caller address to contract
+        /// @param event_id The ID of the event to be paid for
+        /// @param event_amount The class amount to be paid
+        /// @param caller Address of the user calling the pay_for_event() function
+        fn _pay_for_event(
+            ref self: ContractState, event_id: u256, event_amount: u256, caller: ContractAddress
+        ) {
+            let this_contract = get_contract_address();
+            let token = ERC20ABIDispatcher { contract_address: self.event_payment_token.read() };
+            let transfer = token.transfer_from(caller, this_contract, event_amount);
+
+            assert(transfer, TRANSFER_FAILED);
+
+            self.attendee_event_details.entry((event_id, caller)).amount_paid.write(event_amount);
+            self.paid_events.entry(caller).write((event_id, event_amount));
+
+            let total_event_amount_paid = self.paid_events_amount.entry(event_id).read();
+            let prev_event_ticket_count = self.paid_event_ticket_count.entry(event_id).read();
+
+            self.paid_events_amount.entry(event_id).write(total_event_amount_paid + event_amount);
+            self.paid_event_ticket_count.entry(event_id).write(prev_event_ticket_count + 1);
         }
     }
 }
