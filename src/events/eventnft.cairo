@@ -72,6 +72,22 @@ pub mod EventNFT {
             self.last_minted_id.read()
         }
 
+        fn get_user_token_id(self: @ContractState, user_address: ContractAddress) -> u256 {
+            self.user_token_id.read(user_address)
+        }
+
+        fn name(self: @ContractState) -> ByteArray {
+            self.erc721.name()
+        }
+
+        fn symbol(self: @ContractState) -> ByteArray {
+            self.erc721.symbol()
+        }
+
+        fn token_uri(self: @ContractState, token_id: u256) -> ByteArray {
+            self.erc721.token_uri(token_id)
+        }
+
         /// @notice burns a community NFT
         /// @param address address of user trying to burn the community NFT token
         fn burn_nft(ref self: ContractState, user_address: ContractAddress, token_id: u256) {

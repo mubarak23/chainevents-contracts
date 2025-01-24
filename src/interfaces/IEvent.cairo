@@ -1,5 +1,8 @@
 use chainevents_contracts::base::types::{EventDetails, EventRegistration};
-use core::starknet::ContractAddress;
+use core::starknet::{ContractAddress, ClassHash};
+/// @title Event Management Interface
+/// @notice Interface for managing events, registrations, and attendance
+/// @dev Includes functions for creating, managing events and handling registrations
 #[starknet::interface]
 pub trait IEvent<TContractState> {
     // EXTERNAL FUNCTION
@@ -10,10 +13,19 @@ pub trait IEvent<TContractState> {
     ); // only owner can closed an event
     fn rsvp_for_event(ref self: TContractState, event_id: u256);
     fn upgrade_event(ref self: TContractState, event_id: u256, paid_amount: u256);
+    fn unregister_from_event(ref self: TContractState, event_id: u256);
+    fn pay_for_event(ref self: TContractState, event_id: u256);
+    fn withdraw_paid_event_amount(ref self: TContractState, event_id: u256);
 
     // GETTER FUNCTION
     fn event_details(self: @TContractState, event_id: u256) -> EventDetails;
     fn event_owner(self: @TContractState, event_id: u256) -> ContractAddress;
     fn attendee_event_details(self: @TContractState, event_id: u256) -> EventRegistration;
     fn attendees_registered(self: @TContractState, event_id: u256) -> u256;
+    fn event_registration_count(self: @TContractState, event_id: u256) -> u256;
+    fn fetch_user_paid_event(self: @TContractState) -> (u256, u256);
+    fn paid_event_ticket_counts(self: @TContractState) -> u256;
+    fn event_total_amount_paid(self: @TContractState) -> u256;
+
+    fn upgrade(ref self: TContractState, new_class_hash: ClassHash);
 }
