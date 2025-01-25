@@ -322,6 +322,20 @@ pub mod ChainEvents {
             0
         }
 
+        fn get_events(self: @ContractState) -> Array<EventDetails> {
+            let mut events = ArrayTrait::new();
+            let events_count = self.event_counts.read();
+            let mut count: u256 = 1;
+
+            while count <= events_count {
+                let event: EventDetails = self.event_details.read(count);
+                events.append(event);
+                count += 1;
+            };
+
+            events
+        }
+
         /// @notice Upgrades the contract implementation
         /// @param new_class_hash The new class hash to upgrade to
         /// @dev Only callable by owner
@@ -543,4 +557,3 @@ pub mod ChainEvents {
         }
     }
 }
-
