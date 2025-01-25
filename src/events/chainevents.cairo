@@ -313,8 +313,14 @@ pub mod ChainEvents {
         fn withdraw_paid_event_amount(ref self: ContractState, event_id: u256) {}
 
         fn fetch_user_paid_event(self: @ContractState) -> (u256, u256) {
-            (0, 0)
+            let caller = get_caller_address();
+            // read the paid event details.
+            let (event_id, amount_paid) = self.paid_events.read(caller);
+            
+            // return event_id and amount paid.
+            (event_id, amount_paid)
         }
+
         fn paid_event_ticket_counts(self: @ContractState) -> u256 {
             0
         }

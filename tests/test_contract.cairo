@@ -676,3 +676,44 @@ fn test_pay_for_event_should_panic_for_free_event() {
     event_dispatcher.pay_for_event(event_id);
     stop_cheat_caller_address(event_contract_address);
 }
+
+#[test]
+fn test_fetch_user_paid_event() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+    let payment_token = IERC20Dispatcher { contract_address: strk_token };
+
+    let organizer = USER_ONE.try_into().unwrap();
+    let attendee = USER_TWO.try_into().unwrap();
+
+    // organizer creates and upgrades event.
+    start_cheat_caller_address(event_contract_address, organizer);
+    let event_id = event_dispatcher.add_event("paid workshop", "tech hub");
+    let paid_amount: u256 = 1000000_u256;
+    event_dispatcher.upgrade_event(event_id, paid_amount);
+    stop_cheat_caller_address(event_contract_address);
+
+    // attendee gets tokens and approves spending.
+    start_cheat_caller_address(strk_token, attendee);
+    payment_token.mint(attendee, paid_amount);
+    payment_token.approve(event_contract_address, paid_amount);
+    stop_cheat_caller_address(strk_token);
+
+    // attendee registers and pays for event.
+    start_cheat_caller_address(event_contract_address, attendee);
+    event_dispatcher.register_for_event(event_id);
+    event_dispatcher.pay_for_event(event_id);
+
+    // verify paid event details.
+    let event_details = event_dispatcher.event_details(event_id);
+    assert(event_details.paid_amount == paid_amount, 'Wrong paid amount');
+    assert(event_details.event_type == EventType::Paid, 'Should be paid event');
+
+    // verify payment was processed.
+    assert(payment_token.balance_of(event_contract_address) == paid_amount, 'Contract balance wrong');
+    assert(payment_token.balance_of(attendee) == 0, 'Attendee balance wrong');
+
+    stop_cheat_caller_address(event_contract_address);
+}
