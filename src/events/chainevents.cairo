@@ -319,11 +319,10 @@ pub mod ChainEvents {
             0
         }
         fn event_total_amount_paid(self: @ContractState, event_id: u256) -> u256 {
-            let caller = get_caller_address();
-            let attendee_registration = self.attendee_event_details.read((event_id, caller));
-            assert(attendee_registration.attendee_address == caller, NOT_REGISTERED);
-            let event = self.event_details.read(event_id);
-            event.paid_amount
+            let event_details = self.event_details.read(event_id);
+            assert(event_details.event_id == event_id, INVALID_EVENT);
+            let event = self.paid_events_amount.read(event_id);
+            event
         }
 
         /// @notice Upgrades the contract implementation

@@ -676,3 +676,19 @@ fn test_pay_for_event_should_panic_for_free_event() {
     event_dispatcher.pay_for_event(event_id);
     stop_cheat_caller_address(event_contract_address);
 }
+
+#[test]
+fn test_event_total_amount_paid() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
+
+    let event_id = event_dispatcher.add_event("bitcoin dev meetup", "Dan Marna road");
+    assert(event_id == 1, 'Event was not created');
+    stop_cheat_caller_address(event_contract_address);
+
+    event_dispatcher.event_total_amount_paid(event_id);
+    assert(event_id == 1, 'Invalid event');
+}
