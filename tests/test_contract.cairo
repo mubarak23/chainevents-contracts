@@ -13,7 +13,7 @@ use snforge_std::{
 
 use chainevents_contracts::interfaces::IEvent::{IEventDispatcher, IEventDispatcherTrait};
 use chainevents_contracts::events::chainevents::ChainEvents;
-use chainevents_contracts::base::types::EventType;
+use chainevents_contracts::base::types::{EventDetails, EventType};
 use chainevents_contracts::interfaces::IPaymentToken::{IERC20Dispatcher, IERC20DispatcherTrait};
 
 const USER_ONE: felt252 = 'JOE';
@@ -677,7 +677,6 @@ fn test_pay_for_event_should_panic_for_free_event() {
     stop_cheat_caller_address(event_contract_address);
 }
 
-
 fn test_get_paid_event_ticket_counts() {
     let strk_token = deploy_token_contract();
     let event_contract_address = __setup__(strk_token);
@@ -714,4 +713,35 @@ fn test_get_paid_event_ticket_counts() {
     stop_cheat_caller_address(event_contract_address);
 
     assert(event_dispatcher.paid_event_ticket_counts(event_id) == 1, 'Wrong number of tickets');
+}
+
+#[test]
+fn test_get_events() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    let mut expected_events = ArrayTrait::new();
+
+    let organizer: ContractAddress = USER_ONE.try_into().unwrap();
+    start_cheat_caller_address(event_contract_address, organizer);
+    let initial_event_id = event_dispatcher.add_event("Blockchain Conference", "Tech Park");
+    assert(initial_event_id == 1, 'First event ID incorrect');
+    let events = event_dispatcher.get_events();
+    let expected = event_dispatcher.event_details(initial_event_id);
+    expected_events.append(expected);
+    assert(events == expected_events, 'Events not retrieved');
+
+    stop_cheat_caller_address(event_contract_address);
+
+    let organizer: ContractAddress = USER_TWO.try_into().unwrap();
+    start_cheat_caller_address(event_contract_address, organizer);
+    let second_event_id = event_dispatcher.add_event("Ethereum Workshop", "Innovation Hub");
+    assert(second_event_id == 2, 'Second event ID incorrect');
+    let expected = event_dispatcher.event_details(second_event_id);
+    let events = event_dispatcher.get_events();
+    expected_events.append(expected);
+    assert(events == expected_events, 'Events not retrieved');
+
+    stop_cheat_caller_address(event_contract_address);
 }

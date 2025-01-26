@@ -3,7 +3,7 @@ use core::starknet::ContractAddress;
 /// @title Event Details Structure
 /// @notice Contains comprehensive information about an event
 /// @dev Used to store and manage event-specific data
-#[derive(Drop, Serde, starknet::Store, Clone)]
+#[derive(Drop, Serde, starknet::Store, Clone, PartialEq)]
 pub struct EventDetails {
     pub event_id: u256,
     pub name: ByteArray,
