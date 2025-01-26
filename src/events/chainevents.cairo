@@ -315,8 +315,8 @@ pub mod ChainEvents {
         fn fetch_user_paid_event(self: @ContractState) -> (u256, u256) {
             (0, 0)
         }
-        fn paid_event_ticket_counts(self: @ContractState) -> u256 {
-            0
+        fn paid_event_ticket_counts(self: @ContractState, event_id: u256) -> u256 {
+            self.paid_event_ticket_count.read(event_id)
         }
         fn event_total_amount_paid(self: @ContractState) -> u256 {
             0
