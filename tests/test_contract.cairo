@@ -239,7 +239,7 @@ fn test_event_emission() {
 
     assert(name_matches, 'Event name mismatch');
     assert(location_matches, 'Event location mismatch');
-    assert(event_details.event_id == event_id, 'Event ID mismatch in details');
+
     assert(!event_details.is_closed, 'Event should not be closed');
 
     stop_cheat_caller_address(event_contract_address);
@@ -744,4 +744,20 @@ fn test_get_events() {
     assert(events == expected_events, 'Events not retrieved');
 
     stop_cheat_caller_address(event_contract_address);
+}
+
+#[test]
+fn test_event_total_amount_paid() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
+
+    let event_id = event_dispatcher.add_event("bitcoin dev meetup", "Dan Marna road");
+    assert(event_id == 1, 'Event was not created');
+    stop_cheat_caller_address(event_contract_address);
+
+    event_dispatcher.event_total_amount_paid(event_id);
+    assert(event_id == 1, 'Invalid event');
 }

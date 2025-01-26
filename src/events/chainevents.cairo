@@ -318,8 +318,11 @@ pub mod ChainEvents {
         fn paid_event_ticket_counts(self: @ContractState, event_id: u256) -> u256 {
             self.paid_event_ticket_count.read(event_id)
         }
-        fn event_total_amount_paid(self: @ContractState) -> u256 {
-            0
+        fn event_total_amount_paid(self: @ContractState, event_id: u256) -> u256 {
+            let event_details = self.event_details.read(event_id);
+            assert(event_details.event_id == event_id, INVALID_EVENT);
+            let event = self.paid_events_amount.read(event_id);
+            event
         }
 
         fn get_events(self: @ContractState) -> Array<EventDetails> {
