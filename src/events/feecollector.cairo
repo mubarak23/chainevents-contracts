@@ -72,7 +72,7 @@ pub mod FeeCollector {
     impl FeeCollectorImpl of IFeeCollector<ContractState> {
         fn collect_fee_for_event(ref self: TContractState, event_id: u256) {}
         fn total_fees_collector(self: @TContractState) -> u256 {
-            0
+            self.total_fee_collected.read()
         }
 
         /// @notice Upgrades the contract implementation
@@ -82,5 +82,33 @@ pub mod FeeCollector {
             self.ownable.assert_only_owner();
             self.upgradeable.upgrade(new_class_hash);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use snforge_std::{declare, ContractClassTrait, DeclareResultTrait};
+    use chainevents_contracts::interfaces::IFeeCollector::{
+        IFeeCollectorDispatcher, IFeeCollectorDispatcherTrait
+    };
+
+    #[test]
+    fn test_total_fees_collector() {
+        // First declare and deploy a contract
+        let contract = declare("FeeCollector").unwrap().contract_class();
+        let mut fee_collector_constructor_data: Array<felt252> = array![];
+
+        let fee_percentage: u256 = 10;
+
+        fee_percentage.serialize(ref fee_collector_constructor_data);
+        // Alternatively we could use `deploy_syscall` here
+        let (contract_address, _) = contract.deploy(@fee_collector_constructor_data).unwrap();
+
+        // Create a Dispatcher object that will allow interacting with the deployed contract
+        let dispatcher = IFeeCollectorDispatcher { contract_address };
+
+        // Call a view function of the contract
+        let balance = dispatcher.total_fees_collector();
+        assert(balance == 0, 'balance == 0');
     }
 }
