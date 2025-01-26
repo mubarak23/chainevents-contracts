@@ -13,8 +13,12 @@ use snforge_std::{
 
 use chainevents_contracts::interfaces::IEvent::{IEventDispatcher, IEventDispatcherTrait};
 use chainevents_contracts::events::chainevents::ChainEvents;
+
 use chainevents_contracts::base::types::{EventDetails, EventType};
 use chainevents_contracts::interfaces::IPaymentToken::{IERC20Dispatcher, IERC20DispatcherTrait};
+
+use chainevents_contracts::base::types::EventType;
+
 
 const USER_ONE: felt252 = 'JOE';
 const USER_TWO: felt252 = 'DOE';
@@ -35,7 +39,10 @@ fn __setup__(strk_token: ContractAddress) -> ContractAddress {
     let owner = OWNER();
 
     owner.serialize(ref events_constructor_calldata);
+
     strk_token.serialize(ref events_constructor_calldata);
+
+
 
     let (event_contract_address, _) = events_class_hash
         .deploy(@events_constructor_calldata)

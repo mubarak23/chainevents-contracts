@@ -72,7 +72,11 @@ pub mod FeeCollector {
     impl FeeCollectorImpl of IFeeCollector<ContractState> {
         fn collect_fee_for_event(ref self: TContractState, event_id: u256) {}
         fn total_fees_collector(self: @TContractState) -> u256 {
+
             self.total_fee_collected.read()
+
+            0
+
         }
 
         /// @notice Upgrades the contract implementation
@@ -84,6 +88,7 @@ pub mod FeeCollector {
         }
     }
 }
+
 
 #[cfg(test)]
 mod tests {
@@ -112,3 +117,4 @@ mod tests {
         assert(balance == 0, 'balance == 0');
     }
 }
+
