@@ -707,3 +707,29 @@ fn test_get_events() {
 
     stop_cheat_caller_address(event_contract_address);
 }
+
+#[test]
+fn test_events_by_organizer() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    
+    start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
+    let event_id_1 = event_dispatcher.add_event("Event 1", "Location 1");
+    let _event_id_2 = event_dispatcher.add_event("Event 2", "Location 2");
+
+    let events = event_dispatcher.events_by_organizer();
+
+    assert_eq!(events.len(), 2, "Expected 2 events for the caller");
+
+    
+    let mut found_event_id_1 = false;
+    for event in events {
+        if event == event_id_1 {
+            found_event_id_1 = true;
+            break;
+        }
+    };
+    assert(found_event_id_1, 'Event ID 1 missing');
+}

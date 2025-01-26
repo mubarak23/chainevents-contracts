@@ -29,4 +29,5 @@ pub trait IEvent<TContractState> {
     fn get_events(self: @TContractState) -> Array<EventDetails>;
 
     fn upgrade(ref self: TContractState, new_class_hash: ClassHash);
+    fn events_by_organizer(self: @TContractState) -> Array<u256>;
 }
