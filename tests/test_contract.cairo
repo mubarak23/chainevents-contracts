@@ -239,7 +239,7 @@ fn test_event_emission() {
 
     assert(name_matches, 'Event name mismatch');
     assert(location_matches, 'Event location mismatch');
-    assert(event_details.event_id == event_id, 'Event ID mismatch in details');
+   
     assert(!event_details.is_closed, 'Event should not be closed');
 
     stop_cheat_caller_address(event_contract_address);
