@@ -6,8 +6,8 @@ pub mod ChainEvents {
     use core::num::traits::zero::Zero;
     use chainevents_contracts::base::types::{EventDetails, EventRegistration, EventType};
     use chainevents_contracts::base::errors::Errors::{
-        ZERO_ADDRESS_CALLER, NOT_OWNER, CLOSED_EVENT, ALREADY_REGISTERED, NOT_REGISTERED,
-        ALREADY_RSVP, INVALID_EVENT, EVENT_CLOSED
+        ZERO_ADDRESS_CALLER, NOT_OWNER, CLOSED_EVENT, OPEN_EVENT, ALREADY_REGISTERED, NOT_REGISTERED,
+        ALREADY_RSVP, INVALID_EVENT, EVENT_CLOSED, TRANSFER_FAILED
     };
     use chainevents_contracts::interfaces::IEvent::IEvent;
     use core::starknet::{
@@ -17,6 +17,7 @@ pub mod ChainEvents {
     };
     use openzeppelin::access::ownable::OwnableComponent;
     use openzeppelin_upgrades::UpgradeableComponent;
+    use openzeppelin::token::erc20::{ERC20ABIDispatcher, ERC20ABIDispatcherTrait};
 
     component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
     component!(path: UpgradeableComponent, storage: upgradeable, event: UpgradeableEvent);
@@ -52,7 +53,8 @@ pub mod ChainEvents {
             ContractAddress, (u256, u256)
         >, // map<user_address, (event_id, amount_paid)>
         paid_events_amount: Map<u256, u256>, // map<event_id, total_amount>
-        paid_event_ticket_count: Map<u256, u256> // map<event_id, count_number_of_ticket>
+        paid_event_ticket_count: Map<u256, u256>, // map<event_id, count_number_of_ticket>
+        event_payment_token: ContractAddress, 
     }
 
     /// @notice Events emitted by the contract
@@ -70,6 +72,7 @@ pub mod ChainEvents {
         #[flat]
         UpgradeableEvent: UpgradeableComponent::Event,
         UnregisteredEvent: UnregisteredEvent,
+        WithdrawalMade: WithdrawalMade,
     }
 
     /// @notice Event emitted when a new event is created
@@ -124,6 +127,14 @@ pub mod ChainEvents {
     pub struct EventAttendanceMark {
         pub event_id: u256,
         pub user_address: ContractAddress
+    }
+
+    /// @notice Event emitted when an event organizer withdraws the paid amount
+    #[derive(Drop, starknet::Event)]
+    pub struct WithdrawalMade {
+        pub event_id: u256,
+        pub event_organizer: ContractAddress,
+        pub amount: u256
     }
 
     /// @notice Initializes the Events contract
@@ -285,7 +296,22 @@ pub mod ChainEvents {
         }
 
         fn pay_for_event(ref self: ContractState, event_id: u256) {}
-        fn withdraw_paid_event_amount(ref self: ContractState, event_id: u256) {}
+        fn withdraw_paid_event_amount(ref self: ContractState, event_id: u256) {
+            let caller = get_caller_address();
+            let event_owner = self.event_owners.read(event_id);
+            assert(!event_owner.is_zero(), INVALID_EVENT);
+            assert(caller == event_owner, NOT_OWNER);
+
+            let event_details = self.event_details.read(event_id);
+            assert(event_details.is_closed, OPEN_EVENT);
+
+            let event_amount = self.paid_events_amount.read(event_id);
+            let token = ERC20ABIDispatcher { contract_address: self.event_payment_token.read() };
+            let transfer = token.transfer(event_owner, event_amount);
+            assert(transfer, TRANSFER_FAILED);
+
+            self.emit(WithdrawalMade { event_id, event_organizer: event_owner, amount: event_amount });
+        }
 
         fn fetch_user_paid_event(self: @ContractState) -> (u256, u256) {
             (0, 0)
