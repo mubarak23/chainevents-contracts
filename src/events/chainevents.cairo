@@ -559,4 +559,20 @@ pub mod ChainEvents {
             self.attendee_event_registration_counts.read(event_id)
         }
     }
+
+    /// @notice Get fetch all event created by the function caller to pay for an event
+        /// @return Array of events created by the caller
+        fn events_by_organizer(self: @ContractState) -> Array<u256> {
+            let caller = get_caller_address();
+            let mut caller_events = array![];
+
+            for i in 0..self.event_counts.read() {
+                let address = self.event_owners.read(i);
+                if address == caller {
+                    caller_events.append(i);
+                }
+            };
+            
+            caller_events
+        }
 }
