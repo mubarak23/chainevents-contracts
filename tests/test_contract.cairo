@@ -15,7 +15,6 @@ use openzeppelin::token::erc20::interface::{IERC20CamelDispatcher, IERC20CamelDi
 
 use chainevents_contracts::interfaces::IEvent::{IEventDispatcher, IEventDispatcherTrait};
 use chainevents_contracts::events::chainevents::ChainEvents;
-// use chainevents_contracts::mocks::erc20::MyToken;
 use chainevents_contracts::base::types::EventType;
 use chainevents_contracts::interfaces::IFeeCollector::{
     IFeeCollectorDispatcher, IFeeCollectorDispatcherTrait
