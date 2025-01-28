@@ -363,6 +363,22 @@ pub mod ChainEvents {
             };
             caller_events
         }
+
+        fn get_open_events(self: @ContractState) -> Array<EventDetails> {
+            let mut open_events = ArrayTrait::new();
+            let events_count = self.event_counts.read();
+            let mut count: u256 = 1;
+
+            while count <= events_count {
+                let current_event: EventDetails = self.event_details.read(count);
+                if !current_event.is_closed {
+                    open_events.append(current_event);
+                };
+                count += 1;
+            };
+
+            open_events
+        }
     }
 
     #[generate_trait]
