@@ -27,7 +27,7 @@ pub trait IEvent<TContractState> {
     fn paid_event_ticket_counts(self: @TContractState, event_id: u256) -> u256;
     fn event_total_amount_paid(self: @TContractState, event_id: u256) -> u256;
     fn get_events(self: @TContractState) -> Array<EventDetails>;
-    fn events_by_organizer(self: @TContractState) -> Array<u256>;
+    fn events_by_organizer(self: @TContractState) -> Array<EventDetails>;
 
     fn upgrade(ref self: TContractState, new_class_hash: ClassHash);
 }

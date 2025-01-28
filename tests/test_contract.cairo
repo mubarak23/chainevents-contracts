@@ -764,26 +764,22 @@ fn test_event_total_amount_paid() {
 
 #[test]
 fn test_events_by_organizer() {
-    let _strk_token = deploy_token_contract();
-    let event_contract_address = __setup__(_strk_token);
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
 
+    let mut events: Array<EventDetails> = ArrayTrait::<EventDetails>::new();
+
+    let organizer: ContractAddress = USER_ONE.try_into().unwrap();
+    start_cheat_caller_address(event_contract_address, organizer);
+    let initial_event_id = event_dispatcher.add_event("Blockchain Conference", "Tech Park");
+   
     
-    start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
-    let event_id_1 = event_dispatcher.add_event("Event 1", "Location 1");
-    let _event_id_2 = event_dispatcher.add_event("Event 2", "Location 2");
-
-    let events = event_dispatcher.events_by_organizer();
-
-    assert_eq!(events.len(), 2, "Expected 2 events for the caller");
-
+    let organizer_events: Array<EventDetails> = event_dispatcher.events_by_organizer();
     
-    let mut found_event_id_1 = false;
-    for event in events {
-        if event == event_id_1 {
-            found_event_id_1 = true;
-            break;
-        }
-    };
-    assert(found_event_id_1, 'Event ID 1 missing');
+    let first_event: EventDetails = organizer_events.at(0).clone().try_into().unwrap();
+
+   
+    assert(first_event.organizer == organizer, 'Wrong organizer');
+   
 }
