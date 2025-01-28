@@ -761,3 +761,22 @@ fn test_event_total_amount_paid() {
     event_dispatcher.event_total_amount_paid(event_id);
     assert(event_id == 1, 'Invalid event');
 }
+
+#[test]
+fn test_events_by_organizer() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    let mut events: Array<EventDetails> = ArrayTrait::<EventDetails>::new();
+
+    let organizer: ContractAddress = USER_ONE.try_into().unwrap();
+    start_cheat_caller_address(event_contract_address, organizer);
+    let initial_event_id = event_dispatcher.add_event("Blockchain Conference", "Tech Park");
+
+    let organizer_events: Array<EventDetails> = event_dispatcher.events_by_organizer();
+
+    let first_event: EventDetails = organizer_events.at(0).clone().try_into().unwrap();
+
+    assert(first_event.organizer == organizer, 'Wrong organizer');
+}
