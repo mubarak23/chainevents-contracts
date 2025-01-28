@@ -3,7 +3,7 @@
 // *************************************************************************
 
 use core::result::ResultTrait;
-use core::traits::{TryInto, Into};
+use core::traits::TryInto;
 use starknet::{ContractAddress};
 
 use snforge_std::{
@@ -11,15 +11,26 @@ use snforge_std::{
     DeclareResultTrait, spy_events, EventSpyAssertionsTrait,
 };
 
+use openzeppelin::token::erc20::interface::{IERC20CamelDispatcher, IERC20CamelDispatcherTrait};
+
 use chainevents_contracts::interfaces::IEvent::{IEventDispatcher, IEventDispatcherTrait};
 use chainevents_contracts::events::chainevents::ChainEvents;
+// use chainevents_contracts::mocks::erc20::MyToken;
 use chainevents_contracts::base::types::EventType;
+use chainevents_contracts::interfaces::IFeeCollector::{
+    IFeeCollectorDispatcher, IFeeCollectorDispatcherTrait
+};
+use chainevents_contracts::events::feecollector::FeeCollector;
 
 const USER_ONE: felt252 = 'JOE';
 const USER_TWO: felt252 = 'DOE';
 
 fn OWNER() -> ContractAddress {
     'owner'.try_into().unwrap()
+}
+
+fn RECIPIENT() -> ContractAddress {
+    'recipient'.try_into().unwrap()
 }
 
 // *************************************************************************
@@ -42,10 +53,42 @@ fn __setup__() -> ContractAddress {
     return (event_contract_address);
 }
 
+fn __deploy_erc20__() -> IERC20CamelDispatcher {
+    let erc20_class_hash = declare("MyToken").unwrap().contract_class();
+    let recipient = RECIPIENT();
+    let mut erc20_constructor_calldata: Array<felt252> = array![];
+
+    recipient.serialize(ref erc20_constructor_calldata);
+
+    let (erc20_contract_address, _) = erc20_class_hash.deploy(@erc20_constructor_calldata).unwrap();
+
+    return IERC20CamelDispatcher { contract_address: erc20_contract_address };
+}
+
+fn __setup_fee_collector__(
+    erc20_address: ContractAddress, event_contract_address: ContractAddress
+) -> ContractAddress {
+    // deploy fee collector contract
+    let fee_collector_class_hash = declare("FeeCollector").unwrap().contract_class();
+
+    let mut constructor_calldata: Array<felt252> = array![];
+
+    // fee percentage of 2,5% (250 basis points)
+    let fee_percentage: u256 = 250;
+    fee_percentage.serialize(ref constructor_calldata);
+    erc20_address.serialize(ref constructor_calldata);
+    event_contract_address.serialize(ref constructor_calldata);
+
+    let (fee_collector_address, _) = fee_collector_class_hash
+        .deploy(@constructor_calldata)
+        .unwrap();
+
+    return fee_collector_address;
+}
+
 #[test]
 fn test_add_event() {
     let event_contract_address = __setup__();
-
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
 
     start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
@@ -346,7 +389,6 @@ fn test_end_event_registration_success() {
     let event_id = event_dispatcher.add_event("bitcoin dev meetup", "Dan Marna road");
     assert(event_id == 1, 'Event was not created');
 
-    let event_details = event_dispatcher.event_details(event_id);
     event_dispatcher.end_event_registration(event_id);
     let event_details = event_dispatcher.event_details(event_id);
     assert(event_details.is_closed, 'Event was not closed');
@@ -417,7 +459,6 @@ fn test_end_event_emission() {
     let event_id = event_dispatcher.add_event("bitcoin dev meetup", "Dan Marna road");
     assert(event_id == 1, 'Event was not created');
 
-    let event_details = event_dispatcher.event_details(event_id);
     event_dispatcher.end_event_registration(event_id);
     let event_details = event_dispatcher.event_details(event_id);
     assert(event_details.is_closed, 'Event was not closed');
@@ -488,3 +529,59 @@ fn test_unregister_from_event() {
 
     stop_cheat_caller_address(event_contract_address);
 }
+
+#[test]
+fn test_collect_fee_for_event() {
+    // Setup contracts
+    let event_contract_address = __setup__();
+    let erc20 = __deploy_erc20__();
+
+    let fee_collector_address = __setup_fee_collector__(
+        erc20.contract_address, event_contract_address
+    );
+
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+    let fee_collector = IFeeCollectorDispatcher { contract_address: fee_collector_address };
+
+    // Create a paid event
+    let organizer: ContractAddress = USER_ONE.try_into().unwrap();
+    start_cheat_caller_address(event_contract_address, organizer);
+    let event_id = event_dispatcher.add_event("Paid Conference", "Tech Hub");
+
+    // Upgrade event to paid with 100 token fee
+    let event_fee: u256 = 100;
+    event_dispatcher.upgrade_event(event_id, event_fee);
+    stop_cheat_caller_address(event_contract_address);
+
+    // Setup attendee
+    let attendee: ContractAddress = RECIPIENT();
+
+    // Register for event first
+    start_cheat_caller_address(event_contract_address, attendee);
+    event_dispatcher.register_for_event(event_id);
+    stop_cheat_caller_address(event_contract_address);
+
+    // Approve tokens for fee collector
+    start_cheat_caller_address(erc20.contract_address, attendee);
+    let fee_amount: u256 = (event_fee * 250) / 10000; // 2.5% fee
+    erc20.approve(fee_collector_address, fee_amount);
+    stop_cheat_caller_address(erc20.contract_address);
+
+    // Collect fee
+    start_cheat_caller_address(fee_collector_address, attendee);
+    let mut spy = spy_events();
+    fee_collector.collect_fee_for_event(event_id);
+
+    // Verify event emission
+    let expected_event = FeeCollector::Event::FeesCollected(
+        FeeCollector::FeesCollected { event_id, fee_amount, user_address: attendee }
+    );
+    spy.assert_emitted(@array![(fee_collector_address, expected_event)]);
+
+    // Verify fee collection
+    let total_fees = fee_collector.total_fees_collected();
+    assert(total_fees == fee_amount, 'Incorrect total fees');
+
+    stop_cheat_caller_address(fee_collector_address);
+}
+
