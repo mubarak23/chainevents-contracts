@@ -99,6 +99,61 @@ fn test_event_registration() {
     stop_cheat_caller_address(event_contract_address);
 }
 
+#[test]
+fn test_registration_to_multiple_events() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    let user_one_address: ContractAddress = USER_ONE.try_into().unwrap();
+    start_cheat_caller_address(event_contract_address, user_one_address);
+
+    let event_id_1 = event_dispatcher.add_event("ethereum dev meetup", "Main street 101");
+    let event_id_2 = event_dispatcher.add_event("ethereum dev meetup 2", "Main street 102");
+    assert(event_id_1 == 1, 'Event 1 was not created');
+    assert(event_id_2 == 2, 'Event 2 was not created');
+
+    stop_cheat_caller_address(event_contract_address);
+
+    let user_two_address: ContractAddress = USER_TWO.try_into().unwrap();
+    start_cheat_caller_address(event_contract_address, user_two_address);
+
+    event_dispatcher.register_for_event(event_id_1);
+    event_dispatcher.register_for_event(event_id_2);
+    
+    let event_details_1 = event_dispatcher.event_details(event_id_1);
+    let event_details_2 = event_dispatcher.event_details(event_id_2);
+    
+    let attendee_registration_details_1 = event_dispatcher.attendee_event_details(event_id_1);
+    let attendee_registration_details_2 = event_dispatcher.attendee_event_details(event_id_2);
+
+    assert(
+        attendee_registration_details_1.attendee_address == user_two_address,
+        'E1: attendee_address mismatch'
+    );
+    assert(
+        attendee_registration_details_2.attendee_address == user_two_address,
+        'E2: attendee_address mismatch'
+    );
+    assert(
+        attendee_registration_details_1.nft_contract_address == user_two_address,
+        'E1nft_contract_address mismatch'
+    );
+    assert(
+        attendee_registration_details_2.nft_contract_address == user_two_address,
+        'E2nft_contract_address mismatch'
+    );
+    assert(attendee_registration_details_1.nft_token_id == 0, 'E1: nft_token_id mismatch');
+    assert(attendee_registration_details_2.nft_token_id == 0, 'E2: nft_token_id mismatch');
+    assert(
+        attendee_registration_details_1.organizer == event_details_1.organizer, 'E1: organizer mismatch'
+    );
+    assert(
+        attendee_registration_details_2.organizer == event_details_2.organizer, 'E2: organizer mismatch'
+    );
+    stop_cheat_caller_address(event_contract_address);
+}
+
 fn test_register_for_event() {
     let strk_token = deploy_token_contract();
     let event_contract_address = __setup__(strk_token);
