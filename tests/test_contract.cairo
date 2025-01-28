@@ -734,3 +734,140 @@ fn test_pay_for_event_should_panic_for_free_event() {
     stop_cheat_caller_address(event_contract_address);
 }
 
+<<<<<<< HEAD
+=======
+fn test_get_paid_event_ticket_counts() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+    let payment_token = IERC20Dispatcher { contract_address: strk_token };
+
+    let user_1 = USER_ONE.try_into().unwrap();
+    let user_2 = USER_TWO.try_into().unwrap();
+
+    // user one adds an event
+    start_cheat_caller_address(event_contract_address, user_1);
+    let event_id = event_dispatcher.add_event("bitcoin dev meetup", "Dan Marna road");
+    assert(event_id == 1, 'Event was not created');
+
+    // user one makes event paid
+    let paid_amount: u256 = 1000000_u256;
+    event_dispatcher.upgrade_event(event_id, paid_amount);
+    stop_cheat_caller_address(event_contract_address);
+
+    // user two mints token for payment and approves event contract to spend token
+    start_cheat_caller_address(strk_token, user_2);
+    payment_token.mint(user_2, paid_amount);
+    payment_token.approve(event_contract_address, paid_amount);
+    assert(
+        payment_token.allowance(user_2, event_contract_address) == paid_amount, 'approval failed'
+    );
+    stop_cheat_caller_address(strk_token);
+
+    // user two register's and pay's for an event
+    start_cheat_caller_address(event_contract_address, user_2);
+    event_dispatcher.register_for_event(event_id);
+    event_dispatcher.pay_for_event(event_id);
+    stop_cheat_caller_address(event_contract_address);
+
+    assert(event_dispatcher.paid_event_ticket_counts(event_id) == 1, 'Wrong number of tickets');
+}
+
+#[test]
+fn test_get_events() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    let mut expected_events = ArrayTrait::new();
+
+    let organizer: ContractAddress = USER_ONE.try_into().unwrap();
+    start_cheat_caller_address(event_contract_address, organizer);
+    let initial_event_id = event_dispatcher.add_event("Blockchain Conference", "Tech Park");
+    assert(initial_event_id == 1, 'First event ID incorrect');
+    let events = event_dispatcher.get_events();
+    let expected = event_dispatcher.event_details(initial_event_id);
+    expected_events.append(expected);
+    assert(events == expected_events, 'Events not retrieved');
+
+    stop_cheat_caller_address(event_contract_address);
+
+    let organizer: ContractAddress = USER_TWO.try_into().unwrap();
+    start_cheat_caller_address(event_contract_address, organizer);
+    let second_event_id = event_dispatcher.add_event("Ethereum Workshop", "Innovation Hub");
+    assert(second_event_id == 2, 'Second event ID incorrect');
+    let expected = event_dispatcher.event_details(second_event_id);
+    let events = event_dispatcher.get_events();
+    expected_events.append(expected);
+    assert(events == expected_events, 'Events not retrieved');
+
+    stop_cheat_caller_address(event_contract_address);
+}
+
+#[test]
+fn test_event_total_amount_paid() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
+
+    let event_id = event_dispatcher.add_event("bitcoin dev meetup", "Dan Marna road");
+    assert(event_id == 1, 'Event was not created');
+    stop_cheat_caller_address(event_contract_address);
+
+    event_dispatcher.event_total_amount_paid(event_id);
+    assert(event_id == 1, 'Invalid event');
+}
+
+#[test]
+fn test_events_by_organizer() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    let mut events: Array<EventDetails> = ArrayTrait::<EventDetails>::new();
+
+    let organizer: ContractAddress = USER_ONE.try_into().unwrap();
+    start_cheat_caller_address(event_contract_address, organizer);
+    let initial_event_id = event_dispatcher.add_event("Blockchain Conference", "Tech Park");
+
+    let organizer_events: Array<EventDetails> = event_dispatcher.events_by_organizer();
+
+    let first_event: EventDetails = organizer_events.at(0).clone().try_into().unwrap();
+
+    assert(first_event.organizer == organizer, 'Wrong organizer');
+}
+
+#[test]
+fn test_get_open_events() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    let mut expected_events = ArrayTrait::new();
+
+    let organizer: ContractAddress = USER_ONE.try_into().unwrap();
+    start_cheat_caller_address(event_contract_address, organizer);
+    let initial_event_id = event_dispatcher.add_event("Blockchain Conference", "Tech Park");
+    assert(initial_event_id == 1, 'First event ID incorrect');
+    let open_events = event_dispatcher.get_open_events();
+    let expected = event_dispatcher.event_details(initial_event_id);
+    expected_events.append(expected);
+    assert(open_events == expected_events, 'Events not retrieved');
+
+    stop_cheat_caller_address(event_contract_address);
+
+    let organizer: ContractAddress = USER_TWO.try_into().unwrap();
+    start_cheat_caller_address(event_contract_address, organizer);
+    let second_event_id = event_dispatcher.add_event("Ethereum Workshop", "Innovation Hub");
+    assert(second_event_id == 2, 'Second event ID incorrect');
+    event_dispatcher.end_event_registration(second_event_id);
+    let second_event_details = event_dispatcher.event_details(second_event_id);
+    assert(second_event_details.is_closed, 'Event was not closed');
+    let open_events = event_dispatcher.get_open_events();
+    expected_events.append(second_event_details);
+    assert(open_events != expected_events, 'Function fetches closed events');
+}
+>>>>>>> main
