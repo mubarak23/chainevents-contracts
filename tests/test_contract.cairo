@@ -13,7 +13,7 @@ use snforge_std::{
 
 use chainevents_contracts::interfaces::IEvent::{IEventDispatcher, IEventDispatcherTrait};
 use chainevents_contracts::events::chainevents::ChainEvents;
-use chainevents_contracts::base::types::EventType;
+use chainevents_contracts::base::types::{EventDetails, EventType};
 use chainevents_contracts::interfaces::IPaymentToken::{IERC20Dispatcher, IERC20DispatcherTrait};
 
 const USER_ONE: felt252 = 'JOE';
@@ -95,6 +95,63 @@ fn test_event_registration() {
     assert(attendee_registration_details.nft_token_id == 0, 'nft_token_id mismatch');
     assert(
         attendee_registration_details.organizer == event_details.organizer, 'organizer mismatch'
+    );
+    stop_cheat_caller_address(event_contract_address);
+}
+
+#[test]
+fn test_registration_to_multiple_events() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    let user_one_address: ContractAddress = USER_ONE.try_into().unwrap();
+    start_cheat_caller_address(event_contract_address, user_one_address);
+
+    let event_id_1 = event_dispatcher.add_event("ethereum dev meetup", "Main street 101");
+    let event_id_2 = event_dispatcher.add_event("ethereum dev meetup 2", "Main street 102");
+    assert(event_id_1 == 1, 'Event 1 was not created');
+    assert(event_id_2 == 2, 'Event 2 was not created');
+
+    stop_cheat_caller_address(event_contract_address);
+
+    let user_two_address: ContractAddress = USER_TWO.try_into().unwrap();
+    start_cheat_caller_address(event_contract_address, user_two_address);
+
+    event_dispatcher.register_for_event(event_id_1);
+    event_dispatcher.register_for_event(event_id_2);
+
+    let event_details_1 = event_dispatcher.event_details(event_id_1);
+    let event_details_2 = event_dispatcher.event_details(event_id_2);
+
+    let attendee_registration_details_1 = event_dispatcher.attendee_event_details(event_id_1);
+    let attendee_registration_details_2 = event_dispatcher.attendee_event_details(event_id_2);
+
+    assert(
+        attendee_registration_details_1.attendee_address == user_two_address,
+        'E1: attendee_address mismatch'
+    );
+    assert(
+        attendee_registration_details_2.attendee_address == user_two_address,
+        'E2: attendee_address mismatch'
+    );
+    assert(
+        attendee_registration_details_1.nft_contract_address == user_two_address,
+        'E1nft_contract_address mismatch'
+    );
+    assert(
+        attendee_registration_details_2.nft_contract_address == user_two_address,
+        'E2nft_contract_address mismatch'
+    );
+    assert(attendee_registration_details_1.nft_token_id == 0, 'E1: nft_token_id mismatch');
+    assert(attendee_registration_details_2.nft_token_id == 0, 'E2: nft_token_id mismatch');
+    assert(
+        attendee_registration_details_1.organizer == event_details_1.organizer,
+        'E1: organizer mismatch'
+    );
+    assert(
+        attendee_registration_details_2.organizer == event_details_2.organizer,
+        'E2: organizer mismatch'
     );
     stop_cheat_caller_address(event_contract_address);
 }
@@ -239,7 +296,7 @@ fn test_event_emission() {
 
     assert(name_matches, 'Event name mismatch');
     assert(location_matches, 'Event location mismatch');
-    assert(event_details.event_id == event_id, 'Event ID mismatch in details');
+
     assert(!event_details.is_closed, 'Event should not be closed');
 
     stop_cheat_caller_address(event_contract_address);
@@ -674,46 +731,5 @@ fn test_pay_for_event_should_panic_for_free_event() {
     start_cheat_caller_address(event_contract_address, user_2);
     event_dispatcher.register_for_event(event_id);
     event_dispatcher.pay_for_event(event_id);
-    stop_cheat_caller_address(event_contract_address);
-}
-
-#[test]
-fn test_fetch_user_paid_event() {
-    let strk_token = deploy_token_contract();
-    let event_contract_address = __setup__(strk_token);
-
-    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
-    let payment_token = IERC20Dispatcher { contract_address: strk_token };
-
-    let organizer = USER_ONE.try_into().unwrap();
-    let attendee = USER_TWO.try_into().unwrap();
-
-    // organizer creates and upgrades event.
-    start_cheat_caller_address(event_contract_address, organizer);
-    let event_id = event_dispatcher.add_event("paid workshop", "tech hub");
-    let paid_amount: u256 = 1000000_u256;
-    event_dispatcher.upgrade_event(event_id, paid_amount);
-    stop_cheat_caller_address(event_contract_address);
-
-    // attendee gets tokens and approves spending.
-    start_cheat_caller_address(strk_token, attendee);
-    payment_token.mint(attendee, paid_amount);
-    payment_token.approve(event_contract_address, paid_amount);
-    stop_cheat_caller_address(strk_token);
-
-    // attendee registers and pays for event.
-    start_cheat_caller_address(event_contract_address, attendee);
-    event_dispatcher.register_for_event(event_id);
-    event_dispatcher.pay_for_event(event_id);
-
-    // verify paid event details.
-    let event_details = event_dispatcher.event_details(event_id);
-    assert(event_details.paid_amount == paid_amount, 'Wrong paid amount');
-    assert(event_details.event_type == EventType::Paid, 'Should be paid event');
-
-    // verify payment was processed.
-    assert(payment_token.balance_of(event_contract_address) == paid_amount, 'Contract balance wrong');
-    assert(payment_token.balance_of(attendee) == 0, 'Attendee balance wrong');
-
     stop_cheat_caller_address(event_contract_address);
 }

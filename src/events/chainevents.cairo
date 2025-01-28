@@ -42,7 +42,9 @@ pub mod ChainEvents {
         event_owners: Map<u256, ContractAddress>, // map(event_id, eventOwnerAddress)
         event_counts: u256,
         event_details: Map<u256, EventDetails>, // map(event_id, EventDetailsParams)
-        event_registrations: Map<ContractAddress, u256>, // map<attendeeAddress, event_id>
+        event_registrations: Map<
+            (ContractAddress, u256), bool
+        >, // map<(attendeeAddress, event_id), bool> -> true means that the attende is registered to the event
         attendee_event_details: Map<
             (u256, ContractAddress), EventRegistration,
         >, // map <(event_id, attendeeAddress), EventRegistration>
@@ -316,16 +318,34 @@ pub mod ChainEvents {
             let caller = get_caller_address();
             // read the paid event details.
             let (event_id, amount_paid) = self.paid_events.read(caller);
-            
+
             // return event_id and amount paid.
             (event_id, amount_paid)
         }
-
         fn paid_event_ticket_counts(self: @ContractState) -> u256 {
-            0
+            let caller = get_caller_address();
+            let (event_id, amount_paid) = self.paid_events.read(caller);
+            self.paid_event_ticket_count.read(event_id)
         }
-        fn event_total_amount_paid(self: @ContractState) -> u256 {
-            0
+        fn event_total_amount_paid(self: @ContractState, event_id: u256) -> u256 {
+            let event_details = self.event_details.read(event_id);
+            assert(event_details.event_id == event_id, INVALID_EVENT);
+            let event = self.paid_events_amount.read(event_id);
+            event
+        }
+
+        fn get_events(self: @ContractState) -> Array<EventDetails> {
+            let mut events = ArrayTrait::new();
+            let events_count = self.event_counts.read();
+            let mut count: u256 = 1;
+
+            while count <= events_count {
+                let event: EventDetails = self.event_details.read(count);
+                events.append(event);
+                count += 1;
+            };
+
+            events
         }
 
         /// @notice Upgrades the contract implementation
@@ -334,6 +354,23 @@ pub mod ChainEvents {
         fn upgrade(ref self: ContractState, new_class_hash: ClassHash) {
             self.ownable.assert_only_owner();
             self.upgradeable.upgrade(new_class_hash);
+        }
+
+        /// @notice Get fetch all event created by the function caller to pay for an event
+        /// @return Array of events created by the caller
+        fn events_by_organizer(self: @ContractState) -> Array<EventDetails> {
+            let caller = get_caller_address();
+            let mut caller_events = ArrayTrait::new();
+            let mut count = 0;
+            let event_count = self.event_counts.read();
+
+            while count <= event_count {
+                if self.event_owners.read(count) == caller {
+                    caller_events.append(self.event_details.read(count));
+                }
+                count += 1;
+            };
+            caller_events
         }
     }
 
@@ -419,7 +456,7 @@ pub mod ChainEvents {
 
             self.attendee_event_details.write((event_id, caller), _attendee_event_details);
 
-            self.event_registrations.write(caller, event_id);
+            self.event_registrations.write((caller, event_id), true);
 
             // update event attendees count.
             self.registered_attendees.write(event_id, self.registered_attendees.read(event_id) + 1);
@@ -454,7 +491,7 @@ pub mod ChainEvents {
                     },
                 );
 
-            self.event_registrations.write(caller, 0);
+            self.event_registrations.write((caller, event_id), false);
 
             self.registered_attendees.write(event_id, self.registered_attendees.read(event_id) - 1);
             let current_count = self.attendee_event_registration_counts.read(event_id);
@@ -523,9 +560,9 @@ pub mod ChainEvents {
         }
 
         fn _attendee_event_details(self: @ContractState, event_id: u256) -> EventRegistration {
-            let register_event_id = self.event_registrations.read(get_caller_address());
+            let register_event_id = self.event_registrations.read((get_caller_address(), event_id));
 
-            assert(event_id == register_event_id, 'different event_id');
+            assert(register_event_id, 'different event_id');
 
             let attendee_event_details = self
                 .attendee_event_details
@@ -549,4 +586,3 @@ pub mod ChainEvents {
         }
     }
 }
-
