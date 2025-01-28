@@ -120,10 +120,10 @@ fn test_registration_to_multiple_events() {
 
     event_dispatcher.register_for_event(event_id_1);
     event_dispatcher.register_for_event(event_id_2);
-    
+
     let event_details_1 = event_dispatcher.event_details(event_id_1);
     let event_details_2 = event_dispatcher.event_details(event_id_2);
-    
+
     let attendee_registration_details_1 = event_dispatcher.attendee_event_details(event_id_1);
     let attendee_registration_details_2 = event_dispatcher.attendee_event_details(event_id_2);
 
@@ -146,10 +146,12 @@ fn test_registration_to_multiple_events() {
     assert(attendee_registration_details_1.nft_token_id == 0, 'E1: nft_token_id mismatch');
     assert(attendee_registration_details_2.nft_token_id == 0, 'E2: nft_token_id mismatch');
     assert(
-        attendee_registration_details_1.organizer == event_details_1.organizer, 'E1: organizer mismatch'
+        attendee_registration_details_1.organizer == event_details_1.organizer,
+        'E1: organizer mismatch'
     );
     assert(
-        attendee_registration_details_2.organizer == event_details_2.organizer, 'E2: organizer mismatch'
+        attendee_registration_details_2.organizer == event_details_2.organizer,
+        'E2: organizer mismatch'
     );
     stop_cheat_caller_address(event_contract_address);
 }

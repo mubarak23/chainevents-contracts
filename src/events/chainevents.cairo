@@ -42,7 +42,9 @@ pub mod ChainEvents {
         event_owners: Map<u256, ContractAddress>, // map(event_id, eventOwnerAddress)
         event_counts: u256,
         event_details: Map<u256, EventDetails>, // map(event_id, EventDetailsParams)
-        event_registrations: Map<(ContractAddress, u256), bool>, // map<(attendeeAddress, event_id), bool> -> true means that the attende is registered to the event
+        event_registrations: Map<
+            (ContractAddress, u256), bool
+        >, // map<(attendeeAddress, event_id), bool> -> true means that the attende is registered to the event
         attendee_event_details: Map<
             (u256, ContractAddress), EventRegistration,
         >, // map <(event_id, attendeeAddress), EventRegistration>
