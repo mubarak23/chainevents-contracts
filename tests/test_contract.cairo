@@ -735,7 +735,7 @@ fn test_pay_for_event_should_panic_for_free_event() {
 }
 
 #[test]
-fn test_fetch_user_paid_event() {
+fn fetch_user_paid_event() {
     let strk_token = deploy_token_contract();
     let event_contract_address = __setup__(strk_token);
 
