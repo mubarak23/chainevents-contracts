@@ -837,3 +837,26 @@ fn test_events_by_organizer() {
 
     assert(first_event.organizer == organizer, 'Wrong organizer');
 }
+
+#[test]
+fn test_fetch_all_attendees_on_event(){
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    let user_1 = USER_ONE.try_into().unwrap();
+    let user_2 = USER_TWO.try_into().unwrap();
+
+    start_cheat_caller_address(event_contract_address, user_1);
+    let event_id = event_dispatcher.add_event("bitcoin dev meetup", "Dan Marna road");
+    assert(event_id == 1, 'Event was not created');
+    stop_cheat_caller_address(event_contract_address);
+
+    start_cheat_caller_address(event_contract_address, user_2);
+    event_dispatcher.register_for_event(event_id);
+    stop_cheat_caller_address(event_contract_address);
+
+    let attendees = event_dispatcher.fetch_all_attendees_on_event(event_id);
+    assert(attendees.len() == 1, 'Wrong number of attendees');
+    assert(attendees[0] == user_2, 'Wrong attendee');
+}

@@ -365,6 +365,24 @@ pub mod ChainEvents {
             };
             caller_events
         }
+
+        fn fetch_all_attendees_on_event(self: @ContractState, event_id: u256) -> Array<EventRegistration> {
+            let caller = get_caller_address();
+
+            let mut attendees = ArrayTrait::new();
+            let event = self.event_details.read(event_id);
+            let mut count = 0;
+            let total_attendees: u256 = self.registered_attendees.read(event_id);
+
+            while count <= total_attendees {
+                let attendee = self.attendee_event_details.read((event_id, count));
+                attendees.append(attendee);
+                count += 1;
+            };
+            attendees
+        }
+
+
     }
 
     #[generate_trait]
