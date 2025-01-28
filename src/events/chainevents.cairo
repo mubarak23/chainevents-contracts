@@ -364,6 +364,9 @@ pub mod ChainEvents {
             caller_events
         }
 
+        // get all events same way as the general get_events functions
+        // initialize an array called open events
+        // append events to the array if their is_closed property is false
         fn get_open_events(self: @ContractState) -> Array<EventDetails> {
             let mut open_events = ArrayTrait::new();
             let events_count = self.event_counts.read();
