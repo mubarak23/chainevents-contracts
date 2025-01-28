@@ -356,15 +356,13 @@ pub mod ChainEvents {
             let event_count = self.event_counts.read();
 
             while count <= event_count {
-                if self.event_owners.read(count) == caller{
-                    
-                    caller_events.append(self.event_details.read(count)); 
+                if self.event_owners.read(count) == caller {
+                    caller_events.append(self.event_details.read(count));
                 }
-                count +=1;
-            
-        };
-        caller_events
-}
+                count += 1;
+            };
+            caller_events
+        }
     }
 
     #[generate_trait]
@@ -578,6 +576,4 @@ pub mod ChainEvents {
             self.attendee_event_registration_counts.read(event_id)
         }
     }
-
-    
 }
