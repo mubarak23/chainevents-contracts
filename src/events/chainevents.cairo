@@ -338,17 +338,7 @@ pub mod ChainEvents {
         }
 
         fn get_events(self: @ContractState) -> Array<EventDetails> {
-            let mut events = ArrayTrait::new();
-            let events_count = self.event_counts.read();
-            let mut count: u256 = 1;
-
-            while count <= events_count {
-                let event: EventDetails = self.event_details.read(count);
-                events.append(event);
-                count += 1;
-            };
-
-            events
+            self._get_all_events()
         }
 
         /// @notice Upgrades the contract implementation
@@ -632,6 +622,20 @@ pub mod ChainEvents {
             let event_owner = self.event_owners.read(event_id);
             assert(caller == event_owner, NOT_OWNER);
             self.attendee_event_registration_counts.read(event_id)
+        }
+
+        fn _get_all_events(self: @ContractState) -> Array<EventDetails> {
+            let mut events = ArrayTrait::new();
+            let events_count = self.event_counts.read();
+            let mut count: u256 = 1;
+
+            while count <= events_count {
+                let event: EventDetails = self.event_details.read(count);
+                events.append(event);
+                count += 1;
+            };
+
+            events
         }
     }
 }
