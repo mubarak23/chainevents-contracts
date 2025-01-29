@@ -734,8 +734,6 @@ fn test_pay_for_event_should_panic_for_free_event() {
     stop_cheat_caller_address(event_contract_address);
 }
 
-<<<<<<< HEAD
-=======
 fn test_get_paid_event_ticket_counts() {
     let strk_token = deploy_token_contract();
     let event_contract_address = __setup__(strk_token);
@@ -870,4 +868,3 @@ fn test_get_open_events() {
     expected_events.append(second_event_details);
     assert(open_events != expected_events, 'Function fetches closed events');
 }
->>>>>>> main
