@@ -368,6 +368,8 @@ pub mod ChainEvents {
         }
 
 
+        /// @notice Get fetch all attendees by event
+        /// @return Array of eventregistrations from contract adddresses
         fn fetch_all_attendees_on_event(self: @ContractState, event_id: u256) -> Array<EventRegistration> {
             let mut attendees = ArrayTrait::<EventRegistration>::new();
             let mut count: u256 = 0;
@@ -410,7 +412,7 @@ pub mod ChainEvents {
     #[generate_trait]
     impl InternalImpl of InternalTrait {
         /// @notice Deploys an NFT contract for an event
-        /// @param event_nft_classhash The class hash of the NFT contract to deploy
+        /// @param event_nft_classhash The class haevents created by the callersh of the NFT contract to deploy
         /// @param event_id The ID of the event to associate with the NFT
         /// @return Address of the deployed NFT contract
         fn deploy_event_nft(
