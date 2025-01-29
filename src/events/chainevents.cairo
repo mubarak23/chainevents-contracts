@@ -372,23 +372,8 @@ pub mod ChainEvents {
         fn fetch_all_attendees_on_event(
             self: @ContractState, event_id: u256
         ) -> Array<EventRegistration> {
-            let mut attendees = ArrayTrait::<EventRegistration>::new();
-            let mut count: u256 = 0;
-            let total_attendees: u256 = self.registered_attendees.read(event_id);
-
-            while count < total_attendees {
-                let attendee_address = self.attendee_event_addresses.read((event_id, count));
-                if !attendee_address.is_zero() {
-                    let attendee_details = self
-                        .attendee_event_details
-                        .read((event_id, attendee_address));
-                    attendees.append(attendee_details);
-                }
-                count += 1;
-            };
-            attendees
+            self._fetch_all_attendees_on_event(event_id)
         }
-
 
         // get all events same way as the general get_events functions
         // initialize an array called open events
@@ -636,6 +621,25 @@ pub mod ChainEvents {
             };
 
             events
+        }
+       
+        fn _fetch_all_attendees_on_event(
+            self: @ContractState, event_id: u256
+        ) -> Array<EventRegistration> {
+           let mut attendees = ArrayTrait::<EventRegistration>::new();
+            let mut count: u256 = 0;
+            let total_attendees: u256 = self.registered_attendees.read(event_id);
+            while count < total_attendees {
+                let attendee_address = self.attendee_event_addresses.read((event_id, count));
+                if !attendee_address.is_zero() {
+                    let attendee_details = self
+                        .attendee_event_details
+                        .read((event_id, attendee_address));
+                    attendees.append(attendee_details);
+                }
+                count += 1;
+            };
+            attendees
         }
     }
 }
