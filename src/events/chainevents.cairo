@@ -623,6 +623,7 @@ pub mod ChainEvents {
             events
         }
        
+       
         fn _fetch_all_attendees_on_event(
             self: @ContractState, event_id: u256
         ) -> Array<EventRegistration> {
