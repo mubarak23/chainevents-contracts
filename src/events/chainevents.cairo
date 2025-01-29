@@ -48,6 +48,9 @@ pub mod ChainEvents {
         attendee_event_details: Map<
             (u256, ContractAddress), EventRegistration,
         >, // map <(event_id, attendeeAddress), EventRegistration>
+        attendee_event_addresses: Map<
+            (u256, u256), ContractAddress
+        >, // map <(event_id, registration_index), attendee_address>
         // paid_events: Map<
         //     (ContractAddress, u256), u256
         // >, // map<(attendeeAddress, event_id), amount_paid>
@@ -373,6 +376,30 @@ pub mod ChainEvents {
             caller_events
         }
 
+
+        /// @notice Get fetch all attendees by event
+        /// @return Array of eventregistrations from contract adddresses
+        fn fetch_all_attendees_on_event(
+            self: @ContractState, event_id: u256
+        ) -> Array<EventRegistration> {
+            let mut attendees = ArrayTrait::<EventRegistration>::new();
+            let mut count: u256 = 0;
+            let total_attendees: u256 = self.registered_attendees.read(event_id);
+
+            while count < total_attendees {
+                let attendee_address = self.attendee_event_addresses.read((event_id, count));
+                if !attendee_address.is_zero() {
+                    let attendee_details = self
+                        .attendee_event_details
+                        .read((event_id, attendee_address));
+                    attendees.append(attendee_details);
+                }
+                count += 1;
+            };
+            attendees
+        }
+
+
         // get all events same way as the general get_events functions
         // initialize an array called open events
         // append events to the array if their is_closed property is false
@@ -396,8 +423,8 @@ pub mod ChainEvents {
     #[generate_trait]
     impl InternalImpl of InternalTrait {
         /// @notice Deploys an NFT contract for an event
-        /// @param event_nft_classhash The class hash of the NFT contract to deploy
-        /// @param event_id The ID of the event to associate with the NFT
+        /// @param event_nft_classhash The class haevents created by the callersh of the NFT
+        /// contract to deploy @param event_id The ID of the event to associate with the NFT
         /// @return Address of the deployed NFT contract
         fn deploy_event_nft(
             ref self: ContractState, event_nft_classhash: ClassHash, event_id: u256,
@@ -474,6 +501,9 @@ pub mod ChainEvents {
             };
 
             self.attendee_event_details.write((event_id, caller), _attendee_event_details);
+            self
+                .attendee_event_addresses
+                .write((event_id, self.registered_attendees.read(event_id)), caller);
 
             self.event_registrations.write((caller, event_id), true);
 
