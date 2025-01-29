@@ -29,6 +29,8 @@ pub trait IEvent<TContractState> {
     fn get_events(self: @TContractState) -> Array<EventDetails>;
     fn events_by_organizer(self: @TContractState) -> Array<EventDetails>;
     fn fetch_all_attendees_on_event(self: @TContractState, event_id: u256) -> Array<EventRegistration>;
+    fn get_open_events(self: @TContractState) -> Array<EventDetails>;
+
 
     fn upgrade(ref self: TContractState, new_class_hash: ClassHash);
 }
