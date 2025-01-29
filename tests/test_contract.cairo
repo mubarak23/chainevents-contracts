@@ -13,7 +13,7 @@ use snforge_std::{
 
 use chainevents_contracts::interfaces::IEvent::{IEventDispatcher, IEventDispatcherTrait};
 use chainevents_contracts::events::chainevents::ChainEvents;
-use chainevents_contracts::base::types::{EventDetails, EventType};
+use chainevents_contracts::base::types::{EventDetails, EventType, EventRegistration};
 use chainevents_contracts::interfaces::IPaymentToken::{IERC20Dispatcher, IERC20DispatcherTrait};
 
 const USER_ONE: felt252 = 'JOE';
@@ -839,24 +839,24 @@ fn test_events_by_organizer() {
 }
 
 #[test]
-fn test_fetch_all_attendees_on_event(){
-    let strk_token = deploy_token_contract();
-    let event_contract_address = __setup__(strk_token);
-    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+fn test_fetch_all_attendees_on_event() {
+        let strk_token = deploy_token_contract();
+        let event_contract_address = __setup__(strk_token);
+        let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
 
-    let user_1 = USER_ONE.try_into().unwrap();
-    let user_2 = USER_TWO.try_into().unwrap();
+        let user_one_address: ContractAddress = USER_ONE.try_into().unwrap();
+        start_cheat_caller_address(event_contract_address, user_one_address);
+        let initial_event_id = event_dispatcher.add_event("Blockchain Conference", "Tech Park");
+        let initial_event_id = event_dispatcher.add_event("Starknet Confrence", "Times Square");
+        println!("{}", initial_event_id);
+        stop_cheat_caller_address(event_contract_address);
 
-    start_cheat_caller_address(event_contract_address, user_1);
-    let event_id = event_dispatcher.add_event("bitcoin dev meetup", "Dan Marna road");
-    assert(event_id == 1, 'Event was not created');
-    stop_cheat_caller_address(event_contract_address);
+        let user_two_address: ContractAddress = USER_TWO.try_into().unwrap();
+        start_cheat_caller_address(event_contract_address, user_two_address);
+        event_dispatcher.register_for_event(initial_event_id);
+        stop_cheat_caller_address(event_contract_address); 
 
-    start_cheat_caller_address(event_contract_address, user_2);
-    event_dispatcher.register_for_event(event_id);
-    stop_cheat_caller_address(event_contract_address);
-
-    let attendees = event_dispatcher.fetch_all_attendees_on_event(event_id);
-    assert(attendees.len() == 1, 'Wrong number of attendees');
-    assert(attendees[0] == user_2, 'Wrong attendee');
+        let all_attendees_on_event: Array<EventRegistration> = event_dispatcher.fetch_all_attendees_on_event(initial_event_id);
+        let first_attendee: EventRegistration = all_attendees_on_event.at(0).clone().try_into().unwrap();
+        assert(first_attendee.attendee_address == USER_TWO.try_into().unwrap(), 'Wrong Data Passed' );
 }

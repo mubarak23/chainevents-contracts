@@ -48,6 +48,7 @@ pub mod ChainEvents {
         attendee_event_details: Map<
             (u256, ContractAddress), EventRegistration,
         >, // map <(event_id, attendeeAddress), EventRegistration>
+        attendee_event_addresses: Map<(u256, u256), ContractAddress>, // map <(event_id, registration_index), attendee_address>
         // paid_events: Map<
         //     (ContractAddress, u256), u256
         // >, // map<(attendeeAddress, event_id), amount_paid>
@@ -367,16 +368,16 @@ pub mod ChainEvents {
         }
 
         fn fetch_all_attendees_on_event(self: @ContractState, event_id: u256) -> Array<EventRegistration> {
-            let caller = get_caller_address();
-
-            let mut attendees = ArrayTrait::new();
-            let event = self.event_details.read(event_id);
-            let mut count = 0;
+            let mut attendees = ArrayTrait::<EventRegistration>::new();
+            let mut count: u256 = 0;
             let total_attendees: u256 = self.registered_attendees.read(event_id);
 
-            while count <= total_attendees {
-                let attendee = self.attendee_event_details.read((event_id, count));
-                attendees.append(attendee);
+            while count < total_attendees {
+                let attendee_address = self.attendee_event_addresses.read((event_id, count));
+                if !attendee_address.is_zero() {
+                    let attendee_details = self.attendee_event_details.read((event_id, attendee_address));
+                    attendees.append(attendee_details);
+                }
                 count += 1;
             };
             attendees
@@ -466,6 +467,7 @@ pub mod ChainEvents {
             };
 
             self.attendee_event_details.write((event_id, caller), _attendee_event_details);
+            self.attendee_event_addresses.write((event_id, self.registered_attendees.read(event_id) + 1), caller);
 
             self.event_registrations.write((caller, event_id), true);
 
