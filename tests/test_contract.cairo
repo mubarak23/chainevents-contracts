@@ -18,6 +18,8 @@ use chainevents_contracts::interfaces::IPaymentToken::{IERC20Dispatcher, IERC20D
 
 const USER_ONE: felt252 = 'JOE';
 const USER_TWO: felt252 = 'DOE';
+const USER_THREE: felt252 = 'JACK';
+
 
 fn OWNER() -> ContractAddress {
     'owner'.try_into().unwrap()
@@ -847,8 +849,7 @@ fn test_fetch_all_attendees_on_event() {
         let user_one_address: ContractAddress = USER_ONE.try_into().unwrap();
         start_cheat_caller_address(event_contract_address, user_one_address);
         let initial_event_id = event_dispatcher.add_event("Blockchain Conference", "Tech Park");
-        let initial_event_id = event_dispatcher.add_event("Starknet Confrence", "Times Square");
-        println!("{}", initial_event_id);
+        let another_event_id = event_dispatcher.add_event("Starknet Confrence", "Times Square");
         stop_cheat_caller_address(event_contract_address);
 
         let user_two_address: ContractAddress = USER_TWO.try_into().unwrap();
@@ -856,7 +857,16 @@ fn test_fetch_all_attendees_on_event() {
         event_dispatcher.register_for_event(initial_event_id);
         stop_cheat_caller_address(event_contract_address); 
 
+        let user_three_address: ContractAddress = USER_THREE.try_into().unwrap();
+        start_cheat_caller_address(event_contract_address, user_three_address);
+        event_dispatcher.register_for_event(initial_event_id);
+        stop_cheat_caller_address(event_contract_address); 
+
         let all_attendees_on_event: Array<EventRegistration> = event_dispatcher.fetch_all_attendees_on_event(initial_event_id);
+        println!("the number is {}", all_attendees_on_event.len());
+        assert(all_attendees_on_event.len() == 2, 'Wrong number of attendees');
         let first_attendee: EventRegistration = all_attendees_on_event.at(0).clone().try_into().unwrap();
-        assert(first_attendee.attendee_address == USER_TWO.try_into().unwrap(), 'Wrong Data Passed' );
+        let second_attendee: EventRegistration = all_attendees_on_event.at(1).clone().try_into().unwrap();
+        assert(first_attendee.attendee_address == USER_TWO.try_into().unwrap(), 'Wrong first attendee');
+        assert(second_attendee.attendee_address == USER_THREE.try_into().unwrap(), 'Wrong second attendee');
 }

@@ -467,7 +467,7 @@ pub mod ChainEvents {
             };
 
             self.attendee_event_details.write((event_id, caller), _attendee_event_details);
-            self.attendee_event_addresses.write((event_id, self.registered_attendees.read(event_id) + 1), caller);
+            self.attendee_event_addresses.write((event_id, self.registered_attendees.read(event_id)), caller);
 
             self.event_registrations.write((caller, event_id), true);
 
