@@ -382,6 +382,23 @@ pub mod ChainEvents {
 
             open_events
         }
+
+        fn get_closed_events(self: @ContractState) -> Array<EventDetails> {
+            let mut closed_events = ArrayTrait::new();
+            let events_count = self.event_counts.read();
+            let mut count: u256 = 1;
+
+            while count <= events_count {
+                let current_event: EventDetails = self.event_details.read(count);
+                if current_event.is_closed {
+                    closed_events.append(current_event);
+                };
+                count += 1;
+            };
+
+            closed_events
+        }
+        
         fn fetch_all_paid_events(self: @ContractState) -> Array<EventDetails> {
             let mut paid_events = ArrayTrait::new();
             let events_count = self.event_counts.read();

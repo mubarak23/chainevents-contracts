@@ -914,6 +914,36 @@ fn test_get_open_events() {
 }
 
 #[test]
+fn test_get_closed_events() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    let mut expected_events = ArrayTrait::new();
+
+    let organizer: ContractAddress = USER_ONE.try_into().unwrap();
+    start_cheat_caller_address(event_contract_address, organizer);
+    let initial_event_id = event_dispatcher.add_event("Blockchain Conference", "Tech Park");
+    assert(initial_event_id == 1, 'First event ID incorrect');
+    event_dispatcher.end_event_registration(initial_event_id);
+    let closed_events = event_dispatcher.get_closed_events();
+    let expected = event_dispatcher.event_details(initial_event_id);
+    expected_events.append(expected);
+    assert(closed_events == expected_events, 'Events not retrieved');
+
+    stop_cheat_caller_address(event_contract_address);
+
+    let organizer: ContractAddress = USER_TWO.try_into().unwrap();
+    start_cheat_caller_address(event_contract_address, organizer);
+    let second_event_id = event_dispatcher.add_event("Ethereum Workshop", "Innovation Hub");
+    assert(second_event_id == 2, 'Second event ID incorrect');
+    let second_event_details = event_dispatcher.event_details(second_event_id);
+    let closed_events = event_dispatcher.get_closed_events();
+    expected_events.append(second_event_details);
+    assert(closed_events != expected_events, 'Function includes open events');
+}
+
+#[test]
 fn test_fetch_all_paid_events() {
     let strk_token = deploy_token_contract();
     let event_contract_address = __setup__(strk_token);
