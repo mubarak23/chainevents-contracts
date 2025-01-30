@@ -352,18 +352,7 @@ pub mod ChainEvents {
         /// @notice Get fetch all event created by the function caller to pay for an event
         /// @return Array of events created by the caller
         fn events_by_organizer(self: @ContractState) -> Array<EventDetails> {
-            let caller = get_caller_address();
-            let mut caller_events = ArrayTrait::new();
-            let mut count = 0;
-            let event_count = self.event_counts.read();
-
-            while count <= event_count {
-                if self.event_owners.read(count) == caller {
-                    caller_events.append(self.event_details.read(count));
-                }
-                count += 1;
-            };
-            caller_events
+            self._events_by_organizer()
         }
 
 
@@ -641,6 +630,21 @@ pub mod ChainEvents {
                 count += 1;
             };
             attendees
+        }
+
+        fn _events_by_organizer(self: @ContractState) -> Array<EventDetails> {
+            let caller = get_caller_address();
+            let mut caller_events = ArrayTrait::new();
+            let mut count = 0;
+            let event_count = self.event_counts.read();
+
+            while count <= event_count {
+                if self.event_owners.read(count) == caller {
+                    caller_events.append(self.event_details.read(count));
+                }
+                count += 1;
+            };
+            caller_events
         }
     }
 }
