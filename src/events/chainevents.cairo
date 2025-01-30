@@ -331,7 +331,7 @@ pub mod ChainEvents {
             self.paid_event_ticket_count.read(event_id)
         }
         fn event_total_amount_paid(self: @ContractState, event_id: u256) -> u256 {
-           self._event_total_amount_paid(event_id)
+            self._event_total_amount_paid(event_id)
         }
 
         fn get_events(self: @ContractState) -> Array<EventDetails> {
