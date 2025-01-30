@@ -393,6 +393,21 @@ pub mod ChainEvents {
 
             open_events
         }
+        fn fetch_all_paid_events(self: @ContractState) -> Array<EventDetails> {
+            let mut paid_events = ArrayTrait::new();
+            let events_count = self.event_counts.read();
+            let mut count: u256 = 1;
+
+            while count <= events_count {
+                let current_event: EventDetails = self.event_details.read(count);
+                if current_event.event_type == EventType::Paid {
+                    paid_events.append(current_event);
+                };
+                count += 1;
+            };
+
+            paid_events
+        }
     }
 
     #[generate_trait]

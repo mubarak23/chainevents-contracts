@@ -912,3 +912,38 @@ fn test_get_open_events() {
     expected_events.append(second_event_details);
     assert(open_events != expected_events, 'Function fetches closed events');
 }
+
+#[test]
+fn test_fetch_all_paid_events() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    let mut expected_events = ArrayTrait::new();
+
+    let customer: ContractAddress = USER_ONE.try_into().unwrap();
+
+    start_cheat_caller_address(event_contract_address, customer);
+    let initial_event_id = event_dispatcher.add_event("Blockchain Conference", "Tech Park");
+    stop_cheat_caller_address(event_contract_address);
+
+    let customer: ContractAddress = USER_TWO.try_into().unwrap();
+    start_cheat_caller_address(event_contract_address, customer);
+    let second_event_id = event_dispatcher.add_event("Ethereum Workshop", "Innovation Hub");
+    stop_cheat_caller_address(event_contract_address);
+
+    start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
+    let paid_amount: u256 = 1000000_u256;
+    event_dispatcher.upgrade_event(initial_event_id, paid_amount);
+    let paid_events = event_dispatcher.fetch_all_paid_events();
+    let expected = event_dispatcher.event_details(initial_event_id);
+    expected_events.append(expected);
+    assert(paid_events == expected_events, 'Paid events not retrieved');
+
+    start_cheat_caller_address(event_contract_address, USER_TWO.try_into().unwrap());
+    event_dispatcher.upgrade_event(second_event_id, paid_amount);
+    let paid_events = event_dispatcher.fetch_all_paid_events();
+    let expected = event_dispatcher.event_details(second_event_id);
+    expected_events.append(expected);
+    assert(paid_events == expected_events, 'Paid events not retrieved');
+}

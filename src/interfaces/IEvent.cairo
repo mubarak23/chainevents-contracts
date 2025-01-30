@@ -32,7 +32,7 @@ pub trait IEvent<TContractState> {
         self: @TContractState, event_id: u256
     ) -> Array<EventRegistration>;
     fn get_open_events(self: @TContractState) -> Array<EventDetails>;
-
+    fn fetch_all_paid_events(self: @TContractState) -> Array<EventDetails>;
 
     fn upgrade(ref self: TContractState, new_class_hash: ClassHash);
 }
