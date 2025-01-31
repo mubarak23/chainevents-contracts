@@ -326,9 +326,7 @@ pub mod ChainEvents {
             (event_id, amount_paid)
         }
         fn paid_event_ticket_counts(self: @ContractState, event_id: u256) -> u256 {
-            let caller = get_caller_address();
-            let (event_id, amount_paid) = self.paid_events.read(caller);
-            self.paid_event_ticket_count.read(event_id)
+            self._paid_event_ticket_counts(event_id)
         }
         fn event_total_amount_paid(self: @ContractState, event_id: u256) -> u256 {
             self._event_total_amount_paid(event_id)
@@ -693,6 +691,12 @@ pub mod ChainEvents {
             };
 
             open_events
+        }
+
+        fn _paid_event_ticket_counts(self: @ContractState, event_id: u256) -> u256 {
+            let caller = get_caller_address();
+            let (event_id, amount_paid) = self.paid_events.read(caller);
+            self.paid_event_ticket_count.read(event_id)
         }
     }
 }
