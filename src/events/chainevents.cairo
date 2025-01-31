@@ -140,9 +140,10 @@ pub mod ChainEvents {
     /// @notice Initializes the Events contract
     /// @dev Sets the initial event count to 0
     #[constructor]
-    fn constructor(ref self: ContractState, owner: ContractAddress) {
+    fn constructor(ref self: ContractState, owner: ContractAddress, payment_token: ContractAddress) {
         self.event_counts.write(0);
         self.ownable.initializer(owner);
+        self.event_payment_token.write(payment_token);
     }
 
     #[abi(embed_v0)]
