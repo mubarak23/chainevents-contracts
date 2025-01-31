@@ -427,9 +427,10 @@ fn test_open_event_registration_success() {
     assert(event_id == 1, 'Event was not created');
 
     let event_details = event_dispatcher.event_details(event_id);
+    event_dispatcher.end_event_registration(event_id);
     event_dispatcher.open_event_registration(event_id);
     let event_details = event_dispatcher.event_details(event_id);
-    assert(event_details.is_open, 'Event was not opened');
+    assert(!event_details.is_closed, 'Event was not opened');
 
     stop_cheat_caller_address(event_contract_address);
 }
@@ -478,11 +479,11 @@ fn test_event_details_after_open_event_registration() {
     let event_id = event_dispatcher.add_event("bitcoin dev meetup", "Dan Marna road");
     assert(event_id == 1, 'Event was not created');
 
+    event_dispatcher.end_event_registration(event_id);
     event_dispatcher.open_event_registration(event_id);
 
     let event_details = event_dispatcher.event_details(event_id);
-    assert(event_details.is_open, 'Event should be opened');
-    assert(!event_details.is_closed, 'Event should no be closed');
+    assert(!event_details.is_closed, 'Event should not be closed');
     assert(event_details.event_id == 1, 'Event ID mismatch');
     assert(event_details.name == "bitcoin dev meetup", 'Event name mismatch');
     assert(event_details.location == "Dan Marna road", 'Event location mismatch');
@@ -503,18 +504,30 @@ fn test_open_event_emission() {
     assert(event_id == 1, 'Event was not created');
 
     let event_details = event_dispatcher.event_details(event_id);
+
+    event_dispatcher.end_event_registration(event_id);
+
+    let mut spy = spy_events();
+
     event_dispatcher.open_event_registration(event_id);
     let event_details = event_dispatcher.event_details(event_id);
-    assert(event_details.is_open, 'Event was not opened');
+    assert(!event_details.is_closed, 'Event was not opened');
 
-    // Compare each field independently
-    let name_matches = event_details.name == "bitcoin dev meetup";
-    let location_matches = event_details.location == "Dan Marna road";
-
-    assert(name_matches, 'Event name mismatch');
-    assert(location_matches, 'Event location mismatch');
-    assert(event_details.event_id == event_id, 'Event ID mismatch in details');
-    assert(!event_details.is_closed, 'Event should not be closed');
+    spy
+        .assert_emitted(
+            @array![
+                (
+                    event_contract_address,
+                    ChainEvents::Event::OpenEventRegistration(
+                        ChainEvents::OpenEventRegistration {
+                            event_id,
+                            event_name: event_details.name,
+                            event_owner: USER_ONE.try_into().unwrap()
+                        }
+                    )
+                )
+            ]
+        );
 
     stop_cheat_caller_address(event_contract_address);
 }

@@ -8,8 +8,8 @@ pub mod ChainEvents {
     use chainevents_contracts::base::types::{EventDetails, EventRegistration, EventType};
     use chainevents_contracts::base::errors::Errors::{
         ZERO_ADDRESS_CALLER, NOT_OWNER, CLOSED_EVENT, ALREADY_REGISTERED, NOT_REGISTERED,
-        ALREADY_RSVP, INVALID_EVENT, EVENT_OPENED, EVENT_CLOSED, TRANSFER_FAILED, NOT_A_PAID_EVENT,
-        PAYMENT_TOKEN_NOT_SET,
+        ALREADY_RSVP, INVALID_EVENT, EVENT_NOT_CLOSED, EVENT_CLOSED, TRANSFER_FAILED,
+        NOT_A_PAID_EVENT, PAYMENT_TOKEN_NOT_SET,
     };
     use chainevents_contracts::interfaces::IEvent::IEvent;
     use core::starknet::{
@@ -440,7 +440,6 @@ pub mod ChainEvents {
                 total_register: 0,
                 total_attendees: 0,
                 event_type: EventType::Free,
-                is_open: false,
                 is_closed: false,
                 paid_amount: 0,
             };
@@ -571,8 +570,8 @@ pub mod ChainEvents {
             assert(caller == event_owner, NOT_OWNER);
 
             let mut event_details = self.event_details.read(event_id);
-            assert(!event_details.is_open, EVENT_OPENED);
-            event_details.is_open = true;
+            assert(event_details.is_closed, EVENT_NOT_CLOSED);
+            event_details.is_closed = false;
             self.event_details.write(event_id, event_details.clone());
             event_details.name
         }
