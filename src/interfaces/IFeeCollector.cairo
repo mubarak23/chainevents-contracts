@@ -5,7 +5,7 @@ use core::starknet::{ClassHash};
 #[starknet::interface]
 pub trait IFeeCollector<TContractState> {
     fn collect_fee_for_event(ref self: TContractState, event_id: u256);
-    fn total_fees_collector(self: @TContractState) -> u256;
+    fn total_fees_collected(self: @TContractState) -> u256;
 
     fn upgrade_contract(ref self: TContractState, new_class_hash: ClassHash);
 }
