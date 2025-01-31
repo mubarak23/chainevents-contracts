@@ -346,9 +346,7 @@ pub mod ChainEvents {
             (event_id, amount_paid)
         }
         fn paid_event_ticket_counts(self: @ContractState, event_id: u256) -> u256 {
-            let caller = get_caller_address();
-            let (event_id, amount_paid) = self.paid_events.read(caller);
-            self.paid_event_ticket_count.read(event_id)
+            self._paid_event_ticket_counts(event_id)
         }
         fn event_total_amount_paid(self: @ContractState, event_id: u256) -> u256 {
             self._event_total_amount_paid(event_id)
@@ -385,35 +383,11 @@ pub mod ChainEvents {
         // initialize an array called open events
         // append events to the array if their is_closed property is false
         fn get_open_events(self: @ContractState) -> Array<EventDetails> {
-            let mut open_events = ArrayTrait::new();
-            let events_count = self.event_counts.read();
-            let mut count: u256 = 1;
-
-            while count <= events_count {
-                let current_event: EventDetails = self.event_details.read(count);
-                if !current_event.is_closed {
-                    open_events.append(current_event);
-                };
-                count += 1;
-            };
-
-            open_events
+            self._get_open_events()
         }
 
         fn get_closed_events(self: @ContractState) -> Array<EventDetails> {
-            let mut closed_events = ArrayTrait::new();
-            let events_count = self.event_counts.read();
-            let mut count: u256 = 1;
-
-            while count <= events_count {
-                let current_event: EventDetails = self.event_details.read(count);
-                if current_event.is_closed {
-                    closed_events.append(current_event);
-                };
-                count += 1;
-            };
-
-            closed_events
+            self._get_closed_events()
         }
 
         fn fetch_all_paid_events(self: @ContractState) -> Array<EventDetails> {
@@ -720,6 +694,44 @@ pub mod ChainEvents {
             assert(event_details.event_id == event_id, INVALID_EVENT);
             let event = self.paid_events_amount.read(event_id);
             event
+        }
+
+        fn _get_closed_events(self: @ContractState) -> Array<EventDetails> {
+            let mut closed_events = ArrayTrait::new();
+            let events_count = self.event_counts.read();
+            let mut count: u256 = 1;
+
+            while count <= events_count {
+                let current_event: EventDetails = self.event_details.read(count);
+                if current_event.is_closed {
+                    closed_events.append(current_event);
+                };
+                count += 1;
+            };
+
+            closed_events
+        }
+
+        fn _get_open_events(self: @ContractState) -> Array<EventDetails> {
+            let mut open_events = ArrayTrait::new();
+            let events_count = self.event_counts.read();
+            let mut count: u256 = 1;
+
+            while count <= events_count {
+                let current_event: EventDetails = self.event_details.read(count);
+                if !current_event.is_closed {
+                    open_events.append(current_event);
+                };
+                count += 1;
+            };
+
+            open_events
+        }
+
+        fn _paid_event_ticket_counts(self: @ContractState, event_id: u256) -> u256 {
+            let caller = get_caller_address();
+            let (event_id, amount_paid) = self.paid_events.read(caller);
+            self.paid_event_ticket_count.read(event_id)
         }
     }
 }
