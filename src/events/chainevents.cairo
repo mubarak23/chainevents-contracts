@@ -8,7 +8,7 @@ pub mod ChainEvents {
     use chainevents_contracts::base::types::{EventDetails, EventRegistration, EventType};
     use chainevents_contracts::base::errors::Errors::{
         ZERO_ADDRESS_CALLER, NOT_OWNER, CLOSED_EVENT, ALREADY_REGISTERED, NOT_REGISTERED,
-        ALREADY_RSVP, INVALID_EVENT, EVENT_CLOSED, TRANSFER_FAILED, NOT_A_PAID_EVENT,
+        ALREADY_RSVP, INVALID_EVENT, EVENT_OPENED, EVENT_CLOSED, TRANSFER_FAILED, NOT_A_PAID_EVENT,
         PAYMENT_TOKEN_NOT_SET,
     };
     use chainevents_contracts::interfaces::IEvent::IEvent;
@@ -72,6 +72,7 @@ pub mod ChainEvents {
         RegisteredForEvent: RegisteredForEvent,
         EventAttendanceMark: EventAttendanceMark,
         UpgradedEvent: UpgradedEvent,
+        OpenEventRegistration: OpenEventRegistration,
         EndEventRegistration: EndEventRegistration,
         RSVPForEvent: RSVPForEvent,
         #[flat]
@@ -97,6 +98,14 @@ pub mod ChainEvents {
         pub event_id: u256,
         pub event_name: ByteArray,
         pub user_address: ContractAddress,
+    }
+
+    /// @notice Event emitted when registration for an event is opened
+    #[derive(Drop, starknet::Event)]
+    pub struct OpenEventRegistration {
+        pub event_id: u256,
+        pub event_name: ByteArray,
+        pub event_owner: ContractAddress,
     }
 
     /// @notice Event emitted when registration for an event is closed
@@ -204,6 +213,17 @@ pub mod ChainEvents {
 
             // emit event for the indexers
             self.emit(UnregisteredEvent { event_id, user_address: caller });
+        }
+
+        /// @notice Opens registration for an event
+        /// @param event_id The ID of the event to open registration for
+        /// @dev Only callable by event owner
+        fn open_event_registration(ref self: ContractState, event_id: u256) {
+            let caller = get_caller_address();
+
+            let event_name = self._open_event_registration(caller.clone(), event_id.clone());
+
+            self.emit(OpenEventRegistration { event_id, event_name, event_owner: caller });
         }
 
 
@@ -446,6 +466,7 @@ pub mod ChainEvents {
                 total_register: 0,
                 total_attendees: 0,
                 event_type: EventType::Free,
+                is_open: false,
                 is_closed: false,
                 paid_amount: 0,
             };
@@ -564,6 +585,20 @@ pub mod ChainEvents {
             let mut event_details = self.event_details.read(event_id);
             event_details.event_type = EventType::Paid;
             event_details.paid_amount = paid_amount;
+            self.event_details.write(event_id, event_details.clone());
+            event_details.name
+        }
+
+        fn _open_event_registration(
+            ref self: ContractState, caller: ContractAddress, event_id: u256,
+        ) -> ByteArray {
+            let event_owner = self.event_owners.read(event_id);
+            assert(!event_owner.is_zero(), INVALID_EVENT);
+            assert(caller == event_owner, NOT_OWNER);
+
+            let mut event_details = self.event_details.read(event_id);
+            assert(!event_details.is_open, EVENT_OPENED);
+            event_details.is_open = true;
             self.event_details.write(event_id, event_details.clone());
             event_details.name
         }

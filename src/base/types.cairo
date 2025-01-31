@@ -12,6 +12,7 @@ pub struct EventDetails {
     pub total_register: u256,
     pub total_attendees: u256,
     pub event_type: EventType,
+    pub is_open: bool,
     pub is_closed: bool,
     pub paid_amount: u256,
 }
