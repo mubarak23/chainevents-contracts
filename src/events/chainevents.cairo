@@ -43,13 +43,13 @@ pub mod ChainEvents {
         event_counts: u256,
         event_details: Map<u256, EventDetails>, // map(event_id, EventDetailsParams)
         event_registrations: Map<
-            (ContractAddress, u256), bool
+            (ContractAddress, u256), bool,
         >, // map<(attendeeAddress, event_id), bool> -> true means that the attende is registered to the event
         attendee_event_details: Map<
             (u256, ContractAddress), EventRegistration,
         >, // map <(event_id, attendeeAddress), EventRegistration>
         attendee_event_addresses: Map<
-            (u256, u256), ContractAddress
+            (u256, u256), ContractAddress,
         >, // map <(event_id, registration_index), attendee_address>
         // paid_events: Map<
         //     (ContractAddress, u256), u256
@@ -359,7 +359,7 @@ pub mod ChainEvents {
         /// @notice Get fetch all attendees by event
         /// @return Array of eventregistrations from contract adddresses
         fn fetch_all_attendees_on_event(
-            self: @ContractState, event_id: u256
+            self: @ContractState, event_id: u256,
         ) -> Array<EventRegistration> {
             self._fetch_all_attendees_on_event(event_id)
         }
@@ -398,7 +398,7 @@ pub mod ChainEvents {
 
             closed_events
         }
-        
+
         fn fetch_all_paid_events(self: @ContractState) -> Array<EventDetails> {
             let mut paid_events = ArrayTrait::new();
             let events_count = self.event_counts.read();
@@ -646,7 +646,7 @@ pub mod ChainEvents {
 
 
         fn _fetch_all_attendees_on_event(
-            self: @ContractState, event_id: u256
+            self: @ContractState, event_id: u256,
         ) -> Array<EventRegistration> {
             let mut attendees = ArrayTrait::<EventRegistration>::new();
             let mut count: u256 = 0;

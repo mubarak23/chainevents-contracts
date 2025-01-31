@@ -9,7 +9,7 @@ pub trait IEvent<TContractState> {
     fn add_event(ref self: TContractState, name: ByteArray, location: ByteArray) -> u256;
     fn register_for_event(ref self: TContractState, event_id: u256);
     fn end_event_registration(
-        ref self: TContractState, event_id: u256
+        ref self: TContractState, event_id: u256,
     ); // only owner can closed an event
     fn rsvp_for_event(ref self: TContractState, event_id: u256);
     fn upgrade_event(ref self: TContractState, event_id: u256, paid_amount: u256);
@@ -29,7 +29,7 @@ pub trait IEvent<TContractState> {
     fn get_events(self: @TContractState) -> Array<EventDetails>;
     fn events_by_organizer(self: @TContractState) -> Array<EventDetails>;
     fn fetch_all_attendees_on_event(
-        self: @TContractState, event_id: u256
+        self: @TContractState, event_id: u256,
     ) -> Array<EventRegistration>;
     fn get_open_events(self: @TContractState) -> Array<EventDetails>;
     fn get_closed_events(self: @TContractState) -> Array<EventDetails>;

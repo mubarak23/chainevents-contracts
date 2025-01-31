@@ -6,13 +6,13 @@ pub mod FeeCollector {
     use chainevents_contracts::base::types::{EventDetails, EventRegistration, EventType};
     use chainevents_contracts::base::errors::Errors::{
         ZERO_ADDRESS_CALLER, NOT_OWNER, CLOSED_EVENT, ALREADY_REGISTERED, NOT_REGISTERED,
-        ALREADY_RSVP, INVALID_EVENT, EVENT_CLOSED
+        ALREADY_RSVP, INVALID_EVENT, EVENT_CLOSED,
     };
     use chainevents_contracts::interfaces::IFeeCollector::IFeeCollector;
     use core::starknet::{
         ContractAddress, get_caller_address, syscalls::deploy_syscall, ClassHash,
         get_block_timestamp,
-        storage::{Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePathEntry}
+        storage::{Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePathEntry},
     };
     use openzeppelin::access::ownable::OwnableComponent;
     use openzeppelin_upgrades::UpgradeableComponent;
@@ -33,7 +33,7 @@ pub mod FeeCollector {
     #[storage]
     struct Storage {
         event_ticket_fees: Map<
-            ContractAddress, (u256, u256)
+            ContractAddress, (u256, u256),
         >, // map<user_address, (event_id, fee_amount)>
         event_ticket_total_fee: Map<u256, u256>, // Map<event_id, total_fee_collected>
         total_fee_collected: u256,
@@ -56,7 +56,7 @@ pub mod FeeCollector {
     pub struct FeesCollected {
         pub event_id: u256,
         pub fee_amount: u256,
-        pub user_address: ContractAddress
+        pub user_address: ContractAddress,
     }
 
     /// @notice Initializes the Events contract
@@ -89,7 +89,7 @@ pub mod FeeCollector {
 mod tests {
     use snforge_std::{declare, ContractClassTrait, DeclareResultTrait};
     use chainevents_contracts::interfaces::IFeeCollector::{
-        IFeeCollectorDispatcher, IFeeCollectorDispatcherTrait
+        IFeeCollectorDispatcher, IFeeCollectorDispatcherTrait,
     };
 
     #[test]
