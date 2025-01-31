@@ -365,7 +365,7 @@ pub mod ChainEvents {
         // initialize an array called open events
         // append events to the array if their is_closed property is false
         fn get_open_events(self: @ContractState) -> Array<EventDetails> {
-           self._get_open_events()
+            self._get_open_events()
         }
 
         fn get_closed_events(self: @ContractState) -> Array<EventDetails> {
@@ -680,7 +680,7 @@ pub mod ChainEvents {
         }
 
         fn _get_open_events(self: @ContractState) -> Array<EventDetails> {
-             let mut open_events = ArrayTrait::new();
+            let mut open_events = ArrayTrait::new();
             let events_count = self.event_counts.read();
             let mut count: u256 = 1;
 
