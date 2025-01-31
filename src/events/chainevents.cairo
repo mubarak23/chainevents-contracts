@@ -412,6 +412,23 @@ pub mod ChainEvents {
             paid_events
         }
     }
+     /// @notice Fetch all unpaid events
+    /// @return An array of EventDetails for events that have not received any payment.
+    fn fetch_all_unpaid_events(self: @ContractState) -> Array<EventDetails> {
+        let mut unpaid_events =ArrayTrait ::new();
+        let event_counts: u256 = self.event_counts.read();
+        let mut i: u256 = 1;
+        while (i <= count) {
+            // Get event details.
+            let details: EventDetails = self.event_details.get(i);
+            let paid: u256 = self.paid_events_amount.get(i);
+            if (paid == 0) {
+                unpaid.append(details);
+            }
+            i = i + 1;
+        }
+        return unpaid_events;
+    }
 
     #[generate_trait]
     impl InternalImpl of InternalTrait {
