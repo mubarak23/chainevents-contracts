@@ -416,6 +416,123 @@ fn test_attendees_registered_updates_correctly() {
 }
 
 #[test]
+fn test_open_event_registration_success() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
+    let event_id = event_dispatcher.add_event("bitcoin dev meetup", "Dan Marna road");
+    assert(event_id == 1, 'Event was not created');
+
+    let event_details = event_dispatcher.event_details(event_id);
+    event_dispatcher.end_event_registration(event_id);
+    event_dispatcher.open_event_registration(event_id);
+    let event_details = event_dispatcher.event_details(event_id);
+    assert(!event_details.is_closed, 'Event was not opened');
+
+    stop_cheat_caller_address(event_contract_address);
+}
+
+#[test]
+#[should_panic(expected: 'Caller Not Owner')]
+fn test_not_owner_open_event_registration() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
+    let event_id = event_dispatcher.add_event("bitcoin dev meetup", "Dan Marna road");
+    assert(event_id == 1, 'Event was not created');
+    stop_cheat_caller_address(event_contract_address);
+
+    start_cheat_caller_address(event_contract_address, USER_TWO.try_into().unwrap());
+    event_dispatcher.open_event_registration(event_id);
+    stop_cheat_caller_address(event_contract_address);
+}
+
+#[test]
+#[should_panic(expected: 'Invalid event')]
+fn test_open_event_registration_for_invalid_event() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
+    let event_id = event_dispatcher.add_event("bitcoin dev meetup", "Dan Marna road");
+    assert(event_id == 1, 'Event was not created');
+    stop_cheat_caller_address(event_contract_address);
+
+    start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
+    event_dispatcher.open_event_registration(2);
+    stop_cheat_caller_address(event_contract_address);
+}
+
+#[test]
+fn test_event_details_after_open_event_registration() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
+    let event_id = event_dispatcher.add_event("bitcoin dev meetup", "Dan Marna road");
+    assert(event_id == 1, 'Event was not created');
+
+    event_dispatcher.end_event_registration(event_id);
+    event_dispatcher.open_event_registration(event_id);
+
+    let event_details = event_dispatcher.event_details(event_id);
+    assert(!event_details.is_closed, 'Event should not be closed');
+    assert(event_details.event_id == 1, 'Event ID mismatch');
+    assert(event_details.name == "bitcoin dev meetup", 'Event name mismatch');
+    assert(event_details.location == "Dan Marna road", 'Event location mismatch');
+    assert(event_details.organizer == USER_ONE.try_into().unwrap(), 'Organizer mismatch');
+
+    stop_cheat_caller_address(event_contract_address);
+}
+
+#[test]
+fn test_open_event_emission() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
+    let event_id = event_dispatcher.add_event("bitcoin dev meetup", "Dan Marna road");
+    assert(event_id == 1, 'Event was not created');
+
+    let event_details = event_dispatcher.event_details(event_id);
+
+    event_dispatcher.end_event_registration(event_id);
+
+    let mut spy = spy_events();
+
+    event_dispatcher.open_event_registration(event_id);
+    let event_details = event_dispatcher.event_details(event_id);
+    assert(!event_details.is_closed, 'Event was not opened');
+
+    spy
+        .assert_emitted(
+            @array![
+                (
+                    event_contract_address,
+                    ChainEvents::Event::OpenEventRegistration(
+                        ChainEvents::OpenEventRegistration {
+                            event_id,
+                            event_name: event_details.name,
+                            event_owner: USER_ONE.try_into().unwrap()
+                        }
+                    )
+                )
+            ]
+        );
+
+    stop_cheat_caller_address(event_contract_address);
+}
+
+#[test]
 fn test_end_event_registration_success() {
     let strk_token = deploy_token_contract();
     let event_contract_address = __setup__(strk_token);

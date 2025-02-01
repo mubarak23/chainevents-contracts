@@ -8,6 +8,9 @@ pub trait IEvent<TContractState> {
     // EXTERNAL FUNCTION
     fn add_event(ref self: TContractState, name: ByteArray, location: ByteArray) -> u256;
     fn register_for_event(ref self: TContractState, event_id: u256);
+    fn open_event_registration(
+        ref self: TContractState, event_id: u256,
+    ); // only owner can open an event
     fn end_event_registration(
         ref self: TContractState, event_id: u256,
     ); // only owner can closed an event

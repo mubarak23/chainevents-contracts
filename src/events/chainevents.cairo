@@ -8,8 +8,8 @@ pub mod ChainEvents {
     use chainevents_contracts::base::types::{EventDetails, EventRegistration, EventType};
     use chainevents_contracts::base::errors::Errors::{
         ZERO_ADDRESS_CALLER, NOT_OWNER, CLOSED_EVENT, ALREADY_REGISTERED, NOT_REGISTERED,
-        ALREADY_RSVP, INVALID_EVENT, EVENT_CLOSED, TRANSFER_FAILED, NOT_A_PAID_EVENT,
-        PAYMENT_TOKEN_NOT_SET,
+        ALREADY_RSVP, INVALID_EVENT, EVENT_NOT_CLOSED, EVENT_CLOSED, TRANSFER_FAILED,
+        NOT_A_PAID_EVENT, PAYMENT_TOKEN_NOT_SET,
     };
     use chainevents_contracts::interfaces::IEvent::IEvent;
     use core::starknet::{
@@ -72,6 +72,7 @@ pub mod ChainEvents {
         RegisteredForEvent: RegisteredForEvent,
         EventAttendanceMark: EventAttendanceMark,
         UpgradedEvent: UpgradedEvent,
+        OpenEventRegistration: OpenEventRegistration,
         EndEventRegistration: EndEventRegistration,
         RSVPForEvent: RSVPForEvent,
         #[flat]
@@ -97,6 +98,14 @@ pub mod ChainEvents {
         pub event_id: u256,
         pub event_name: ByteArray,
         pub user_address: ContractAddress,
+    }
+
+    /// @notice Event emitted when registration for an event is opened
+    #[derive(Drop, starknet::Event)]
+    pub struct OpenEventRegistration {
+        pub event_id: u256,
+        pub event_name: ByteArray,
+        pub event_owner: ContractAddress,
     }
 
     /// @notice Event emitted when registration for an event is closed
@@ -204,6 +213,17 @@ pub mod ChainEvents {
 
             // emit event for the indexers
             self.emit(UnregisteredEvent { event_id, user_address: caller });
+        }
+
+        /// @notice Opens registration for an event
+        /// @param event_id The ID of the event to open registration for
+        /// @dev Only callable by event owner
+        fn open_event_registration(ref self: ContractState, event_id: u256) {
+            let caller = get_caller_address();
+
+            let event_name = self._open_event_registration(caller.clone(), event_id.clone());
+
+            self.emit(OpenEventRegistration { event_id, event_name, event_owner: caller });
         }
 
 
@@ -326,9 +346,7 @@ pub mod ChainEvents {
             (event_id, amount_paid)
         }
         fn paid_event_ticket_counts(self: @ContractState, event_id: u256) -> u256 {
-            let caller = get_caller_address();
-            let (event_id, amount_paid) = self.paid_events.read(caller);
-            self.paid_event_ticket_count.read(event_id)
+            self._paid_event_ticket_counts(event_id)
         }
         fn event_total_amount_paid(self: @ContractState, event_id: u256) -> u256 {
             self._event_total_amount_paid(event_id)
@@ -365,51 +383,15 @@ pub mod ChainEvents {
         // initialize an array called open events
         // append events to the array if their is_closed property is false
         fn get_open_events(self: @ContractState) -> Array<EventDetails> {
-            let mut open_events = ArrayTrait::new();
-            let events_count = self.event_counts.read();
-            let mut count: u256 = 1;
-
-            while count <= events_count {
-                let current_event: EventDetails = self.event_details.read(count);
-                if !current_event.is_closed {
-                    open_events.append(current_event);
-                };
-                count += 1;
-            };
-
-            open_events
+            self._get_open_events()
         }
 
         fn get_closed_events(self: @ContractState) -> Array<EventDetails> {
-            let mut closed_events = ArrayTrait::new();
-            let events_count = self.event_counts.read();
-            let mut count: u256 = 1;
-
-            while count <= events_count {
-                let current_event: EventDetails = self.event_details.read(count);
-                if current_event.is_closed {
-                    closed_events.append(current_event);
-                };
-                count += 1;
-            };
-
-            closed_events
+            self._get_closed_events()
         }
 
         fn fetch_all_paid_events(self: @ContractState) -> Array<EventDetails> {
-            let mut paid_events = ArrayTrait::new();
-            let events_count = self.event_counts.read();
-            let mut count: u256 = 1;
-
-            while count <= events_count {
-                let current_event: EventDetails = self.event_details.read(count);
-                if current_event.event_type == EventType::Paid {
-                    paid_events.append(current_event);
-                };
-                count += 1;
-            };
-
-            paid_events
+            self._fetch_all_paid_events()
         }
     }
      /// @notice Fetch all unpaid events
@@ -569,6 +551,22 @@ pub mod ChainEvents {
             self.attendee_event_details.entry((event_id, caller)).has_rsvp.write(true);
         }
 
+        fn _fetch_all_paid_events(self: @ContractState) -> Array<EventDetails> {
+            let mut paid_events = ArrayTrait::new();
+            let events_count = self.event_counts.read();
+            let mut count: u256 = 1;
+
+            while count <= events_count {
+                let current_event: EventDetails = self.event_details.read(count);
+                if current_event.event_type == EventType::Paid {
+                    paid_events.append(current_event);
+                };
+                count += 1;
+            };
+
+            paid_events
+        }
+
         fn _upgrade_event(
             ref self: ContractState, caller: ContractAddress, event_id: u256, paid_amount: u256,
         ) -> ByteArray {
@@ -577,6 +575,20 @@ pub mod ChainEvents {
             let mut event_details = self.event_details.read(event_id);
             event_details.event_type = EventType::Paid;
             event_details.paid_amount = paid_amount;
+            self.event_details.write(event_id, event_details.clone());
+            event_details.name
+        }
+
+        fn _open_event_registration(
+            ref self: ContractState, caller: ContractAddress, event_id: u256,
+        ) -> ByteArray {
+            let event_owner = self.event_owners.read(event_id);
+            assert(!event_owner.is_zero(), INVALID_EVENT);
+            assert(caller == event_owner, NOT_OWNER);
+
+            let mut event_details = self.event_details.read(event_id);
+            assert(event_details.is_closed, EVENT_NOT_CLOSED);
+            event_details.is_closed = false;
             self.event_details.write(event_id, event_details.clone());
             event_details.name
         }
@@ -698,6 +710,44 @@ pub mod ChainEvents {
             assert(event_details.event_id == event_id, INVALID_EVENT);
             let event = self.paid_events_amount.read(event_id);
             event
+        }
+
+        fn _get_closed_events(self: @ContractState) -> Array<EventDetails> {
+            let mut closed_events = ArrayTrait::new();
+            let events_count = self.event_counts.read();
+            let mut count: u256 = 1;
+
+            while count <= events_count {
+                let current_event: EventDetails = self.event_details.read(count);
+                if current_event.is_closed {
+                    closed_events.append(current_event);
+                };
+                count += 1;
+            };
+
+            closed_events
+        }
+
+        fn _get_open_events(self: @ContractState) -> Array<EventDetails> {
+            let mut open_events = ArrayTrait::new();
+            let events_count = self.event_counts.read();
+            let mut count: u256 = 1;
+
+            while count <= events_count {
+                let current_event: EventDetails = self.event_details.read(count);
+                if !current_event.is_closed {
+                    open_events.append(current_event);
+                };
+                count += 1;
+            };
+
+            open_events
+        }
+
+        fn _paid_event_ticket_counts(self: @ContractState, event_id: u256) -> u256 {
+            let caller = get_caller_address();
+            let (event_id, amount_paid) = self.paid_events.read(caller);
+            self.paid_event_ticket_count.read(event_id)
         }
     }
 }
