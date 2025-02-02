@@ -1098,14 +1098,16 @@ fn test_fetch_all_paid_events() {
 #[test]
 #[should_panic(expected: 'Caller Not Owner')]
 fn test_only_owner_can_withdraw_paid_event_amount() {
-    let event_contract_address = __setup__();
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+    let payment_token = IERC20Dispatcher { contract_address: strk_token };
 
-    let erc20 = __deploy_erc20__();
+    let user_one: ContractAddress = USER_ONE.try_into().unwrap();
+    let user_two: ContractAddress = USER_TWO.try_into().unwrap();
 
     // Create paid event
-    start_cheat_caller_address(event_contract_address, organizer);
-    let organizer: ContractAddress = USER_ONE.try_into().unwrap();
+    start_cheat_caller_address(event_contract_address, user_one);
     let event_id = event_dispatcher.add_event("Paid Workshop", "Devcon");
 
     // Upgrade event to paid with 100 token fee
@@ -1113,49 +1115,45 @@ fn test_only_owner_can_withdraw_paid_event_amount() {
     event_dispatcher.upgrade_event(event_id, event_fee);
     stop_cheat_caller_address(event_contract_address);
 
-    // Register for event
-    let attendee: ContractAddress = RECIPIENT();
-
-    // Register for event
-    start_cheat_caller_address(event_contract_address, attendee);
-    event_dispatcher.register_for_event(event_id);
-    stop_cheat_caller_address(event_contract_address);
-
-    // Approve tokens for event contract
-    start_cheat_caller_address(erc20.contract_address, attendee);
-    erc20.approve(event_contract_address, 100);
-    stop_cheat_caller_address(erc20.contract_address);
+    // Mint and approve tokens for event contract
+    start_cheat_caller_address(strk_token, user_two);
+    payment_token.mint(user_two, event_fee);
+    payment_token.approve(event_contract_address, event_fee);
+    stop_cheat_caller_address(strk_token);
 
     // Check allowance is correct
-    let allowance = erc20.allowance(attendee, event_contract_address);
-    assert(allowance == 100, 'Incorrect allowance');
+    let allowance = payment_token.allowance(user_two, event_contract_address);
+    assert(allowance == event_fee, 'Incorrect allowance');
 
-    // Deposit tokens into event contract
-    start_cheat_caller_address(erc20.contract_address, event_contract_address);
-    erc20.transferFrom(attendee, event_contract_address, event_fee);
-    stop_cheat_caller_address(erc20.contract_address);
+    // Register for event
+    start_cheat_caller_address(event_contract_address, user_two);
+    event_dispatcher.register_for_event(event_id);
+    event_dispatcher.pay_for_event(event_id);
+    stop_cheat_caller_address(event_contract_address);
 
     // Assert token balance of event contract is correct
-    let event_contract_balance = erc20.balanceOf(event_contract_address);
+    let event_contract_balance = payment_token.balance_of(event_contract_address);
     assert(event_contract_balance == event_fee, 'Incorrect balance');
 
     // Withdraw tokens
-    start_cheat_caller_address(event_contract_address, attendee);
+    start_cheat_caller_address(event_contract_address, user_two);
     event_dispatcher.withdraw_paid_event_amount(event_id);
     stop_cheat_caller_address(event_contract_address);
 }
 
 #[test]
-#[should_panic(expected: 'Event is open')]
+#[should_panic(expected: 'Event is not closed')]
 fn test_withdraw_paid_event_amount_for_open_event() {
-    let event_contract_address = __setup__();
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+    let payment_token = IERC20Dispatcher { contract_address: strk_token };
 
-    let erc20 = __deploy_erc20__();
+    let user_one: ContractAddress = USER_ONE.try_into().unwrap();
+    let user_two: ContractAddress = USER_TWO.try_into().unwrap();
 
     // Create paid event
-    let organizer: ContractAddress = USER_ONE.try_into().unwrap();
-    start_cheat_caller_address(event_contract_address, organizer);
+    start_cheat_caller_address(event_contract_address, user_one);
     let event_id = event_dispatcher.add_event("Paid Workshop", "Devcon");
 
     // Upgrade event to paid with 100 token fee
@@ -1164,47 +1162,48 @@ fn test_withdraw_paid_event_amount_for_open_event() {
     stop_cheat_caller_address(event_contract_address);
 
     // Register for event
-    let attendee: ContractAddress = RECIPIENT();
-
-    // Register for event
-    start_cheat_caller_address(event_contract_address, attendee);
+    start_cheat_caller_address(event_contract_address, user_two);
     event_dispatcher.register_for_event(event_id);
     stop_cheat_caller_address(event_contract_address);
 
-    // Approve tokens for event contract
-    start_cheat_caller_address(erc20.contract_address, attendee);
-    erc20.approve(event_contract_address, 100);
-    stop_cheat_caller_address(erc20.contract_address);
+    // Mint and approve tokens for event contract
+    start_cheat_caller_address(strk_token, user_two);
+    payment_token.mint(user_two, event_fee);
+    payment_token.approve(event_contract_address, event_fee);
+    stop_cheat_caller_address(strk_token);
 
     // Check allowance is correct
-    let allowance = erc20.allowance(attendee, event_contract_address);
-    assert(allowance == 100, 'Incorrect allowance');
+    let allowance = payment_token.allowance(user_two, event_contract_address);
+    assert(allowance == event_fee, 'Incorrect allowance');
 
-    // Deposit tokens into event contract
-    start_cheat_caller_address(erc20.contract_address, event_contract_address);
-    erc20.transferFrom(attendee, event_contract_address, event_fee);
-    stop_cheat_caller_address(erc20.contract_address);
+    // Register for event
+    start_cheat_caller_address(event_contract_address, user_two);
+    event_dispatcher.register_for_event(event_id);
+    event_dispatcher.pay_for_event(event_id);
+    stop_cheat_caller_address(event_contract_address);
 
     // Assert token balance of event contract is correct
-    let event_contract_balance = erc20.balanceOf(event_contract_address);
+    let event_contract_balance = payment_token.balance_of(event_contract_address);
     assert(event_contract_balance == event_fee, 'Incorrect balance');
 
     // Withdraw tokens
-    start_cheat_caller_address(event_contract_address, organizer);
+    start_cheat_caller_address(event_contract_address, user_one);
     event_dispatcher.withdraw_paid_event_amount(event_id);
     stop_cheat_caller_address(event_contract_address);
 }
 
 #[test]
 fn test_withdraw_paid_event_amount_for_closed_event() {
-    let event_contract_address = __setup__();
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+    let payment_token = IERC20Dispatcher { contract_address: strk_token };
 
-    let erc20 = __deploy_erc20__();
+    let user_one: ContractAddress = USER_ONE.try_into().unwrap();
+    let user_two: ContractAddress = USER_TWO.try_into().unwrap();
 
     // Create paid event
-    let organizer: ContractAddress = USER_ONE.try_into().unwrap();
-    start_cheat_caller_address(event_contract_address, organizer);
+    start_cheat_caller_address(event_contract_address, user_one);
     let event_id = event_dispatcher.add_event("Paid Workshop", "Devcon");
 
     // Upgrade event to paid with 100 token fee
@@ -1212,47 +1211,49 @@ fn test_withdraw_paid_event_amount_for_closed_event() {
     event_dispatcher.upgrade_event(event_id, event_fee);
     stop_cheat_caller_address(event_contract_address);
 
-    // Register for event
-    let attendee: ContractAddress = RECIPIENT();
-
-    // Register for event
-    start_cheat_caller_address(event_contract_address, attendee);
-    event_dispatcher.register_for_event(event_id);
-    stop_cheat_caller_address(event_contract_address);
-
-    // Approve tokens for event contract
-    start_cheat_caller_address(erc20.contract_address, attendee);
-    erc20.approve(event_contract_address, 100);
-    stop_cheat_caller_address(erc20.contract_address);
+    // Mint and approve tokens for event contract
+    start_cheat_caller_address(strk_token, user_two);
+    payment_token.mint(user_two, event_fee);
+    payment_token.approve(event_contract_address, event_fee);
+    stop_cheat_caller_address(strk_token);
 
     // Check allowance is correct
-    let allowance = erc20.allowance(attendee, event_contract_address);
-    assert(allowance == 100, 'Incorrect allowance');
+    let allowance = payment_token.allowance(user_two, event_contract_address);
+    assert(allowance == event_fee, 'Incorrect allowance');
 
-    // Deposit tokens into event contract
-    start_cheat_caller_address(erc20.contract_address, event_contract_address);
-    erc20.transferFrom(attendee, event_contract_address, event_fee);
-    stop_cheat_caller_address(erc20.contract_address);
+    // Register for event
+    start_cheat_caller_address(event_contract_address, user_two);
+    event_dispatcher.register_for_event(event_id);
+    event_dispatcher.pay_for_event(event_id);
+    stop_cheat_caller_address(event_contract_address);
 
     // Assert token balance of event contract is correct
-    let event_contract_balance = erc20.balanceOf(event_contract_address);
+    let event_contract_balance = payment_token.balance_of(event_contract_address);
     assert(event_contract_balance == event_fee, 'Incorrect balance');
 
     // End event registration
-    start_cheat_caller_address(event_contract_address, organizer);
+    start_cheat_caller_address(event_contract_address, user_one);
     event_dispatcher.end_event_registration(event_id);
     stop_cheat_caller_address(event_contract_address);
 
     let mut spy = spy_events();
 
     // Withdraw tokens
-    start_cheat_caller_address(event_contract_address, organizer);
+    start_cheat_caller_address(event_contract_address, user_one);
     event_dispatcher.withdraw_paid_event_amount(event_id);
     stop_cheat_caller_address(event_contract_address);
 
-    // TODO: fix the amount once the pay_for_event function is implemented
     let expected_event = ChainEvents::Event::WithdrawalMade(
-        ChainEvents::WithdrawalMade { event_id, event_organizer: organizer, amount: 0 }
+        ChainEvents::WithdrawalMade { event_id, event_organizer: user_one, amount: event_fee }
     );
     spy.assert_emitted(@array![(event_contract_address, expected_event)]);
+
+    let event_contract_balance = payment_token.balance_of(event_contract_address);
+    assert(event_contract_balance == 0, 'Incorrect contract balance');
+
+    let user_one_balance = payment_token.balance_of(user_one);
+    assert(user_one_balance == event_fee, 'Incorrect organizer balance');
+
+    let user_two_balance = payment_token.balance_of(user_two);
+    assert(user_two_balance == 0, 'Incorrect attendee balance');
 }

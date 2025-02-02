@@ -81,6 +81,7 @@ pub mod ChainEvents {
         UpgradeableEvent: UpgradeableComponent::Event,
         UnregisteredEvent: UnregisteredEvent,
         EventPayment: EventPayment,
+        WithdrawalMade: WithdrawalMade,
     }
 
     /// @notice Event emitted when a new event is created
@@ -152,6 +153,12 @@ pub mod ChainEvents {
         pub amount: u256,
     }
 
+    #[derive(Drop, starknet::Event)]
+    pub struct WithdrawalMade {
+        pub event_id: u256,
+        pub event_organizer: ContractAddress,
+        pub amount: u256,
+    }
     /// @notice Initializes the Events contract
     /// @dev Sets the initial event count to 0
     #[constructor]
@@ -335,6 +342,9 @@ pub mod ChainEvents {
             self.emit(EventPayment { event_id: event.event_id, caller, amount: event.paid_amount });
         }
 
+        /// @notice Allows the event owner to withdraw the paid amount for an event
+        /// @param event_id The ID of the event to withdraw from
+        /// @dev Only callable by event owner
         fn withdraw_paid_event_amount(ref self: ContractState, event_id: u256) {
             let caller = get_caller_address();
             let event_owner = self.event_owners.read(event_id);
@@ -342,14 +352,17 @@ pub mod ChainEvents {
             assert(caller == event_owner, NOT_OWNER);
 
             let event_details = self.event_details.read(event_id);
-            assert(event_details.is_closed, OPEN_EVENT);
+            assert(event_details.is_closed, EVENT_NOT_CLOSED);
 
             let event_amount = self.paid_events_amount.read(event_id);
             let token = ERC20ABIDispatcher { contract_address: self.event_payment_token.read() };
             let transfer = token.transfer(event_owner, event_amount);
             assert(transfer, TRANSFER_FAILED);
 
-            self.emit(WithdrawalMade { event_id, event_organizer: event_owner, amount: event_amount });
+            self
+                .emit(
+                    WithdrawalMade { event_id, event_organizer: event_owner, amount: event_amount }
+                );
         }
 
         fn fetch_user_paid_event(self: @ContractState) -> (u256, u256) {
