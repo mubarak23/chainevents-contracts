@@ -15,37 +15,31 @@ use openzeppelin::token::erc20::interface::{IERC20CamelDispatcher, IERC20CamelDi
 
 use chainevents_contracts::interfaces::IEvent::{IEventDispatcher, IEventDispatcherTrait};
 use chainevents_contracts::events::chainevents::ChainEvents;
-use chainevents_contracts::base::types::EventType;
-use chainevents_contracts::interfaces::IFeeCollector::{
-    IFeeCollectorDispatcher, IFeeCollectorDispatcherTrait
-};
-use chainevents_contracts::events::feecollector::FeeCollector;
+use chainevents_contracts::base::types::{EventDetails, EventType, EventRegistration};
+use chainevents_contracts::interfaces::IPaymentToken::{IERC20Dispatcher, IERC20DispatcherTrait};
 
 const USER_ONE: felt252 = 'JOE';
 const USER_TWO: felt252 = 'DOE';
+const USER_THREE: felt252 = 'JACK';
+
 
 fn OWNER() -> ContractAddress {
     'owner'.try_into().unwrap()
 }
 
-fn RECIPIENT() -> ContractAddress {
-    'recipient'.try_into().unwrap()
-}
-
 // *************************************************************************
 //                              SETUP
 // *************************************************************************
-fn __setup__() -> ContractAddress {
+fn __setup__(strk_token: ContractAddress) -> ContractAddress {
     // deploy  events
     let events_class_hash = declare("ChainEvents").unwrap().contract_class();
 
     let mut events_constructor_calldata: Array<felt252> = array![];
 
     let owner = OWNER();
-    let payment_token = __deploy_erc20__().contract_address;
 
     owner.serialize(ref events_constructor_calldata);
-    payment_token.serialize(ref events_constructor_calldata);
+    strk_token.serialize(ref events_constructor_calldata);
 
     let (event_contract_address, _) = events_class_hash
         .deploy(@events_constructor_calldata)
@@ -54,42 +48,17 @@ fn __setup__() -> ContractAddress {
     return (event_contract_address);
 }
 
-fn __deploy_erc20__() -> IERC20CamelDispatcher {
-    let erc20_class_hash = declare("MyToken").unwrap().contract_class();
-    let recipient = RECIPIENT();
-    let mut erc20_constructor_calldata: Array<felt252> = array![];
-
-    recipient.serialize(ref erc20_constructor_calldata);
-
-    let (erc20_contract_address, _) = erc20_class_hash.deploy(@erc20_constructor_calldata).unwrap();
-
-    return IERC20CamelDispatcher { contract_address: erc20_contract_address };
-}
-
-fn __setup_fee_collector__(
-    erc20_address: ContractAddress, event_contract_address: ContractAddress
-) -> ContractAddress {
-    // deploy fee collector contract
-    let fee_collector_class_hash = declare("FeeCollector").unwrap().contract_class();
-
-    let mut constructor_calldata: Array<felt252> = array![];
-
-    // fee percentage of 2,5% (250 basis points)
-    let fee_percentage: u256 = 250;
-    fee_percentage.serialize(ref constructor_calldata);
-    erc20_address.serialize(ref constructor_calldata);
-    event_contract_address.serialize(ref constructor_calldata);
-
-    let (fee_collector_address, _) = fee_collector_class_hash
-        .deploy(@constructor_calldata)
-        .unwrap();
-
-    return fee_collector_address;
+fn deploy_token_contract() -> ContractAddress {
+    let contract = declare("PaymentToken").unwrap().contract_class();
+    let (contract_address, _) = contract.deploy(@ArrayTrait::new()).unwrap();
+    contract_address
 }
 
 #[test]
 fn test_add_event() {
-    let event_contract_address = __setup__();
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
 
     start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
@@ -100,7 +69,8 @@ fn test_add_event() {
 
 #[test]
 fn test_event_registration() {
-    let event_contract_address = __setup__();
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
 
     let user_one_address: ContractAddress = USER_ONE.try_into().unwrap();
@@ -120,21 +90,79 @@ fn test_event_registration() {
 
     assert(
         attendee_registration_details.attendee_address == user_two_address,
-        'attendee_address mismatch'
+        'attendee_address mismatch',
     );
     assert(
         attendee_registration_details.nft_contract_address == user_two_address,
-        'nft_contract_address mismatch'
+        'nft_contract_address mismatch',
     );
     assert(attendee_registration_details.nft_token_id == 0, 'nft_token_id mismatch');
     assert(
-        attendee_registration_details.organizer == event_details.organizer, 'organizer mismatch'
+        attendee_registration_details.organizer == event_details.organizer, 'organizer mismatch',
+    );
+    stop_cheat_caller_address(event_contract_address);
+}
+
+#[test]
+fn test_registration_to_multiple_events() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    let user_one_address: ContractAddress = USER_ONE.try_into().unwrap();
+    start_cheat_caller_address(event_contract_address, user_one_address);
+
+    let event_id_1 = event_dispatcher.add_event("ethereum dev meetup", "Main street 101");
+    let event_id_2 = event_dispatcher.add_event("ethereum dev meetup 2", "Main street 102");
+    assert(event_id_1 == 1, 'Event 1 was not created');
+    assert(event_id_2 == 2, 'Event 2 was not created');
+
+    stop_cheat_caller_address(event_contract_address);
+
+    let user_two_address: ContractAddress = USER_TWO.try_into().unwrap();
+    start_cheat_caller_address(event_contract_address, user_two_address);
+
+    event_dispatcher.register_for_event(event_id_1);
+    event_dispatcher.register_for_event(event_id_2);
+
+    let event_details_1 = event_dispatcher.event_details(event_id_1);
+    let event_details_2 = event_dispatcher.event_details(event_id_2);
+
+    let attendee_registration_details_1 = event_dispatcher.attendee_event_details(event_id_1);
+    let attendee_registration_details_2 = event_dispatcher.attendee_event_details(event_id_2);
+
+    assert(
+        attendee_registration_details_1.attendee_address == user_two_address,
+        'E1: attendee_address mismatch',
+    );
+    assert(
+        attendee_registration_details_2.attendee_address == user_two_address,
+        'E2: attendee_address mismatch',
+    );
+    assert(
+        attendee_registration_details_1.nft_contract_address == user_two_address,
+        'E1nft_contract_address mismatch',
+    );
+    assert(
+        attendee_registration_details_2.nft_contract_address == user_two_address,
+        'E2nft_contract_address mismatch',
+    );
+    assert(attendee_registration_details_1.nft_token_id == 0, 'E1: nft_token_id mismatch');
+    assert(attendee_registration_details_2.nft_token_id == 0, 'E2: nft_token_id mismatch');
+    assert(
+        attendee_registration_details_1.organizer == event_details_1.organizer,
+        'E1: organizer mismatch',
+    );
+    assert(
+        attendee_registration_details_2.organizer == event_details_2.organizer,
+        'E2: organizer mismatch',
     );
     stop_cheat_caller_address(event_contract_address);
 }
 
 fn test_register_for_event() {
-    let event_contract_address = __setup__();
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
 
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
 
@@ -155,7 +183,8 @@ fn test_register_for_event() {
 #[test]
 #[should_panic(expected: 'rsvp only for registered event')]
 fn test_should_panic_on_rsvp_for_event_that_was_not_registered_for() {
-    let event_contract_address = __setup__();
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
 
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
 
@@ -172,7 +201,8 @@ fn test_should_panic_on_rsvp_for_event_that_was_not_registered_for() {
 
 #[test]
 fn test_rsvp_for_event_should_emit_event_on_success() {
-    let event_contract_address = __setup__();
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
 
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
 
@@ -194,7 +224,7 @@ fn test_rsvp_for_event_should_emit_event_on_success() {
     event_dispatcher.rsvp_for_event(event_id);
 
     let expected_event = ChainEvents::Event::RSVPForEvent(
-        ChainEvents::RSVPForEvent { event_id: 1, attendee_address: caller }
+        ChainEvents::RSVPForEvent { event_id: 1, attendee_address: caller },
     );
     spy.assert_emitted(@array![(event_contract_address, expected_event)]);
 
@@ -204,7 +234,8 @@ fn test_rsvp_for_event_should_emit_event_on_success() {
 #[test]
 #[should_panic(expected: 'rsvp already exist')]
 fn test_should_panic_on_rsvp_for_event_twice() {
-    let event_contract_address = __setup__();
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
 
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
 
@@ -233,7 +264,8 @@ fn test_should_panic_on_rsvp_for_event_twice() {
 
 #[test]
 fn test_event_count_increase() {
-    let event_contract_address = __setup__();
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
 
     start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
@@ -249,7 +281,8 @@ fn test_event_count_increase() {
 
 #[test]
 fn test_event_emission() {
-    let event_contract_address = __setup__();
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
 
     start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
@@ -267,7 +300,7 @@ fn test_event_emission() {
 
     assert(name_matches, 'Event name mismatch');
     assert(location_matches, 'Event location mismatch');
-    assert(event_details.event_id == event_id, 'Event ID mismatch in details');
+
     assert(!event_details.is_closed, 'Event should not be closed');
 
     stop_cheat_caller_address(event_contract_address);
@@ -276,7 +309,8 @@ fn test_event_emission() {
 #[test]
 #[available_gas(2000000)]
 fn test_event_owner() {
-    let event_contract_address = __setup__();
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
 
     let user_address: ContractAddress = USER_ONE.try_into().unwrap();
@@ -293,7 +327,8 @@ fn test_event_owner() {
 
 #[test]
 fn test_event_details() {
-    let event_contract_address = __setup__();
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
 
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
     let user_address: ContractAddress = USER_ONE.try_into().unwrap();
@@ -335,7 +370,8 @@ fn test_event_details() {
 #[test]
 #[should_panic(expected: 'Caller Not Owner')]
 fn test_registered_attendees_only_owner() {
-    let event_contract_address = __setup__();
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
 
     // USER_ONE adds event
@@ -355,7 +391,8 @@ fn test_registered_attendees_only_owner() {
 
 #[test]
 fn test_attendees_registered_updates_correctly() {
-    let event_contract_address = __setup__();
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
 
     // USER_ONE adds event
@@ -381,8 +418,126 @@ fn test_attendees_registered_updates_correctly() {
 }
 
 #[test]
+fn test_open_event_registration_success() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
+    let event_id = event_dispatcher.add_event("bitcoin dev meetup", "Dan Marna road");
+    assert(event_id == 1, 'Event was not created');
+
+    let event_details = event_dispatcher.event_details(event_id);
+    event_dispatcher.end_event_registration(event_id);
+    event_dispatcher.open_event_registration(event_id);
+    let event_details = event_dispatcher.event_details(event_id);
+    assert(!event_details.is_closed, 'Event was not opened');
+
+    stop_cheat_caller_address(event_contract_address);
+}
+
+#[test]
+#[should_panic(expected: 'Caller Not Owner')]
+fn test_not_owner_open_event_registration() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
+    let event_id = event_dispatcher.add_event("bitcoin dev meetup", "Dan Marna road");
+    assert(event_id == 1, 'Event was not created');
+    stop_cheat_caller_address(event_contract_address);
+
+    start_cheat_caller_address(event_contract_address, USER_TWO.try_into().unwrap());
+    event_dispatcher.open_event_registration(event_id);
+    stop_cheat_caller_address(event_contract_address);
+}
+
+#[test]
+#[should_panic(expected: 'Invalid event')]
+fn test_open_event_registration_for_invalid_event() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
+    let event_id = event_dispatcher.add_event("bitcoin dev meetup", "Dan Marna road");
+    assert(event_id == 1, 'Event was not created');
+    stop_cheat_caller_address(event_contract_address);
+
+    start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
+    event_dispatcher.open_event_registration(2);
+    stop_cheat_caller_address(event_contract_address);
+}
+
+#[test]
+fn test_event_details_after_open_event_registration() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
+    let event_id = event_dispatcher.add_event("bitcoin dev meetup", "Dan Marna road");
+    assert(event_id == 1, 'Event was not created');
+
+    event_dispatcher.end_event_registration(event_id);
+    event_dispatcher.open_event_registration(event_id);
+
+    let event_details = event_dispatcher.event_details(event_id);
+    assert(!event_details.is_closed, 'Event should not be closed');
+    assert(event_details.event_id == 1, 'Event ID mismatch');
+    assert(event_details.name == "bitcoin dev meetup", 'Event name mismatch');
+    assert(event_details.location == "Dan Marna road", 'Event location mismatch');
+    assert(event_details.organizer == USER_ONE.try_into().unwrap(), 'Organizer mismatch');
+
+    stop_cheat_caller_address(event_contract_address);
+}
+
+#[test]
+fn test_open_event_emission() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
+    let event_id = event_dispatcher.add_event("bitcoin dev meetup", "Dan Marna road");
+    assert(event_id == 1, 'Event was not created');
+
+    let event_details = event_dispatcher.event_details(event_id);
+
+    event_dispatcher.end_event_registration(event_id);
+
+    let mut spy = spy_events();
+
+    event_dispatcher.open_event_registration(event_id);
+    let event_details = event_dispatcher.event_details(event_id);
+    assert(!event_details.is_closed, 'Event was not opened');
+
+    spy
+        .assert_emitted(
+            @array![
+                (
+                    event_contract_address,
+                    ChainEvents::Event::OpenEventRegistration(
+                        ChainEvents::OpenEventRegistration {
+                            event_id,
+                            event_name: event_details.name,
+                            event_owner: USER_ONE.try_into().unwrap()
+                        }
+                    )
+                )
+            ]
+        );
+
+    stop_cheat_caller_address(event_contract_address);
+}
+
+#[test]
 fn test_end_event_registration_success() {
-    let event_contract_address = __setup__();
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
 
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
 
@@ -400,7 +555,8 @@ fn test_end_event_registration_success() {
 #[test]
 #[should_panic(expected: 'Caller Not Owner')]
 fn test_not_owner_end_event_registration() {
-    let event_contract_address = __setup__();
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
 
     start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
@@ -416,7 +572,8 @@ fn test_not_owner_end_event_registration() {
 #[test]
 #[should_panic(expected: 'Invalid event')]
 fn test_end_event_registration_for_invalid_event() {
-    let event_contract_address = __setup__();
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
 
     start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
@@ -431,7 +588,8 @@ fn test_end_event_registration_for_invalid_event() {
 
 #[test]
 fn test_event_details_after_end_event_registration() {
-    let event_contract_address = __setup__();
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
 
     start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
@@ -452,7 +610,8 @@ fn test_event_details_after_end_event_registration() {
 
 #[test]
 fn test_end_event_emission() {
-    let event_contract_address = __setup__();
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
 
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
 
@@ -478,7 +637,8 @@ fn test_end_event_emission() {
 
 #[test]
 fn test_upgrade_event() {
-    let event_contract_address = __setup__();
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
 
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
 
@@ -495,7 +655,8 @@ fn test_upgrade_event() {
 #[test]
 #[should_panic(expected: 'Caller Not Owner')]
 fn test_upgrade_event_with_wrong_owner() {
-    let event_contract_address = __setup__();
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
 
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
 
@@ -510,7 +671,8 @@ fn test_upgrade_event_with_wrong_owner() {
 
 #[test]
 fn test_unregister_from_event() {
-    let event_contract_address = __setup__();
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
 
     start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
@@ -524,7 +686,7 @@ fn test_unregister_from_event() {
     event_dispatcher.unregister_from_event(event_id);
 
     let expected_event = ChainEvents::Event::UnregisteredEvent(
-        ChainEvents::UnregisteredEvent { event_id, user_address: USER_TWO.try_into().unwrap() }
+        ChainEvents::UnregisteredEvent { event_id, user_address: USER_TWO.try_into().unwrap() },
     );
     spy.assert_emitted(@array![(event_contract_address, expected_event)]);
 
@@ -532,58 +694,405 @@ fn test_unregister_from_event() {
 }
 
 #[test]
-fn test_collect_fee_for_event() {
-    // Setup contracts
-    let event_contract_address = __setup__();
-    let erc20 = __deploy_erc20__();
-
-    let fee_collector_address = __setup_fee_collector__(
-        erc20.contract_address, event_contract_address
-    );
+fn test_pay_for_event() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
 
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
-    let fee_collector = IFeeCollectorDispatcher { contract_address: fee_collector_address };
+    let payment_token = IERC20Dispatcher { contract_address: strk_token };
 
-    // Create a paid event
+    let user_1 = USER_ONE.try_into().unwrap();
+    let user_2 = USER_TWO.try_into().unwrap();
+
+    // user one adds an event
+    start_cheat_caller_address(event_contract_address, user_1);
+    let event_id = event_dispatcher.add_event("bitcoin dev meetup", "Dan Marna road");
+    assert(event_id == 1, 'Event was not created');
+
+    // user one makes event paid
+    let paid_amount: u256 = 1000000_u256;
+    event_dispatcher.upgrade_event(event_id, paid_amount);
+    stop_cheat_caller_address(event_contract_address);
+
+    // user two mints token for payment and approves event contract to spend token
+    start_cheat_caller_address(strk_token, user_2);
+    payment_token.mint(user_2, paid_amount);
+    payment_token.approve(event_contract_address, paid_amount);
+    assert(
+        payment_token.allowance(user_2, event_contract_address) == paid_amount, 'approval failed',
+    );
+    stop_cheat_caller_address(strk_token);
+
+    // user two register's and pay's for an event
+    start_cheat_caller_address(event_contract_address, user_2);
+    event_dispatcher.register_for_event(event_id);
+    event_dispatcher.pay_for_event(event_id);
+    stop_cheat_caller_address(event_contract_address);
+
+    assert(payment_token.balance_of(event_contract_address) == paid_amount, 'payment failed');
+    assert(payment_token.balance_of(user_2) == 0, 'deduction failed');
+}
+
+#[test]
+fn test_pay_for_event_by_event_owner() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+    let payment_token = IERC20Dispatcher { contract_address: strk_token };
+
+    // user1 is the event owner that adds an event
+    let user_1 = USER_ONE.try_into().unwrap();
+
+    // user one adds an event
+    start_cheat_caller_address(event_contract_address, user_1);
+    let event_id = event_dispatcher.add_event("bitcoin dev meetup", "Dan Marna road");
+    assert(event_id == 1, 'Event was not created');
+
+    // user one makes event paid
+    let paid_amount: u256 = 1000000_u256;
+    event_dispatcher.upgrade_event(event_id, paid_amount);
+    stop_cheat_caller_address(event_contract_address);
+
+    // user one mints token for payment and approves event contract to spend token
+    start_cheat_caller_address(strk_token, user_1);
+    payment_token.mint(user_1, paid_amount);
+    payment_token.approve(event_contract_address, paid_amount);
+    assert(
+        payment_token.allowance(user_1, event_contract_address) == paid_amount, 'approval failed',
+    );
+    stop_cheat_caller_address(strk_token);
+
+    // user one register's and pay's for an event
+    start_cheat_caller_address(event_contract_address, user_1);
+    event_dispatcher.register_for_event(event_id);
+    event_dispatcher.pay_for_event(event_id);
+    stop_cheat_caller_address(event_contract_address);
+
+    assert(payment_token.balance_of(event_contract_address) == paid_amount, 'payment failed');
+    assert(payment_token.balance_of(user_1) == 0, 'deduction failed');
+}
+
+#[test]
+fn test_pay_for_event_emits_event_on_success() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+    let payment_token = IERC20Dispatcher { contract_address: strk_token };
+
+    let user_1 = USER_ONE.try_into().unwrap();
+    let user_2 = USER_TWO.try_into().unwrap();
+
+    // user one adds an event
+    start_cheat_caller_address(event_contract_address, user_1);
+    let event_id = event_dispatcher.add_event("bitcoin dev meetup", "Dan Marna road");
+    assert(event_id == 1, 'Event was not created');
+
+    // user one makes event paid
+    let paid_amount: u256 = 1000000_u256;
+    event_dispatcher.upgrade_event(event_id, paid_amount);
+    stop_cheat_caller_address(event_contract_address);
+
+    // user two mints token for payment and approves event contract to spend token
+    start_cheat_caller_address(strk_token, user_2);
+    payment_token.mint(user_2, paid_amount);
+    payment_token.approve(event_contract_address, paid_amount);
+    assert(
+        payment_token.allowance(user_2, event_contract_address) == paid_amount, 'approval failed',
+    );
+    stop_cheat_caller_address(strk_token);
+
+    let mut spy = spy_events();
+
+    // user two register's and pay's for an event
+    start_cheat_caller_address(event_contract_address, user_2);
+    event_dispatcher.register_for_event(event_id);
+    event_dispatcher.pay_for_event(event_id);
+    stop_cheat_caller_address(event_contract_address);
+
+    let expected_event = ChainEvents::Event::EventPayment(
+        ChainEvents::EventPayment { event_id, caller: user_2, amount: paid_amount },
+    );
+    spy.assert_emitted(@array![(event_contract_address, expected_event)]);
+}
+
+#[test]
+#[should_panic(expected: 'Not a Paid Event')]
+fn test_pay_for_event_should_panic_for_free_event() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+    let payment_token = IERC20Dispatcher { contract_address: strk_token };
+
+    let user_1 = USER_ONE.try_into().unwrap();
+    let user_2 = USER_TWO.try_into().unwrap();
+
+    // user one adds an event
+    start_cheat_caller_address(event_contract_address, user_1);
+    let event_id = event_dispatcher.add_event("bitcoin dev meetup", "Dan Marna road");
+    assert(event_id == 1, 'Event was not created');
+    stop_cheat_caller_address(event_contract_address);
+
+    let paid_amount: u256 = 1000000_u256;
+
+    // user two mints token for payment and approves event contract to spend token
+    start_cheat_caller_address(strk_token, user_2);
+    payment_token.mint(user_2, paid_amount);
+    payment_token.approve(event_contract_address, paid_amount);
+    assert(
+        payment_token.allowance(user_2, event_contract_address) == paid_amount, 'approval failed',
+    );
+    stop_cheat_caller_address(strk_token);
+
+    // user two register's and pay's for an event
+    start_cheat_caller_address(event_contract_address, user_2);
+    event_dispatcher.register_for_event(event_id);
+    event_dispatcher.pay_for_event(event_id);
+    stop_cheat_caller_address(event_contract_address);
+}
+
+fn test_get_paid_event_ticket_counts() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+    let payment_token = IERC20Dispatcher { contract_address: strk_token };
+
+    let user_1 = USER_ONE.try_into().unwrap();
+    let user_2 = USER_TWO.try_into().unwrap();
+
+    // user one adds an event
+    start_cheat_caller_address(event_contract_address, user_1);
+    let event_id = event_dispatcher.add_event("bitcoin dev meetup", "Dan Marna road");
+    assert(event_id == 1, 'Event was not created');
+
+    // user one makes event paid
+    let paid_amount: u256 = 1000000_u256;
+    event_dispatcher.upgrade_event(event_id, paid_amount);
+    stop_cheat_caller_address(event_contract_address);
+
+    // user two mints token for payment and approves event contract to spend token
+    start_cheat_caller_address(strk_token, user_2);
+    payment_token.mint(user_2, paid_amount);
+    payment_token.approve(event_contract_address, paid_amount);
+    assert(
+        payment_token.allowance(user_2, event_contract_address) == paid_amount, 'approval failed',
+    );
+    stop_cheat_caller_address(strk_token);
+
+    // user two register's and pay's for an event
+    start_cheat_caller_address(event_contract_address, user_2);
+    event_dispatcher.register_for_event(event_id);
+    event_dispatcher.pay_for_event(event_id);
+    stop_cheat_caller_address(event_contract_address);
+
+    assert(event_dispatcher.paid_event_ticket_counts(event_id) == 1, 'Wrong number of tickets');
+}
+
+#[test]
+fn test_get_events() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    let mut expected_events = ArrayTrait::new();
+
     let organizer: ContractAddress = USER_ONE.try_into().unwrap();
     start_cheat_caller_address(event_contract_address, organizer);
-    let event_id = event_dispatcher.add_event("Paid Conference", "Tech Hub");
+    let initial_event_id = event_dispatcher.add_event("Blockchain Conference", "Tech Park");
+    assert(initial_event_id == 1, 'First event ID incorrect');
+    let events = event_dispatcher.get_events();
+    let expected = event_dispatcher.event_details(initial_event_id);
+    expected_events.append(expected);
+    assert(events == expected_events, 'Events not retrieved');
 
-    // Upgrade event to paid with 100 token fee
-    let event_fee: u256 = 100;
-    event_dispatcher.upgrade_event(event_id, event_fee);
     stop_cheat_caller_address(event_contract_address);
 
-    // Setup attendee
-    let attendee: ContractAddress = RECIPIENT();
+    let organizer: ContractAddress = USER_TWO.try_into().unwrap();
+    start_cheat_caller_address(event_contract_address, organizer);
+    let second_event_id = event_dispatcher.add_event("Ethereum Workshop", "Innovation Hub");
+    assert(second_event_id == 2, 'Second event ID incorrect');
+    let expected = event_dispatcher.event_details(second_event_id);
+    let events = event_dispatcher.get_events();
+    expected_events.append(expected);
+    assert(events == expected_events, 'Events not retrieved');
 
-    // Register for event first
-    start_cheat_caller_address(event_contract_address, attendee);
-    event_dispatcher.register_for_event(event_id);
+    stop_cheat_caller_address(event_contract_address);
+}
+
+#[test]
+fn test_event_total_amount_paid() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
+
+    let event_id = event_dispatcher.add_event("bitcoin dev meetup", "Dan Marna road");
+    assert(event_id == 1, 'Event was not created');
     stop_cheat_caller_address(event_contract_address);
 
-    // Approve tokens for fee collector
-    start_cheat_caller_address(erc20.contract_address, attendee);
-    let fee_amount: u256 = (event_fee * 250) / 10000; // 2.5% fee
-    erc20.approve(fee_collector_address, fee_amount);
-    stop_cheat_caller_address(erc20.contract_address);
+    event_dispatcher.event_total_amount_paid(event_id);
+    assert(event_id == 1, 'Invalid event');
+}
 
-    // Collect fee
-    start_cheat_caller_address(fee_collector_address, attendee);
-    let mut spy = spy_events();
-    fee_collector.collect_fee_for_event(event_id);
+#[test]
+fn test_events_by_organizer() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
 
-    // Verify event emission
-    let expected_event = FeeCollector::Event::FeesCollected(
-        FeeCollector::FeesCollected { event_id, fee_amount, user_address: attendee }
+    let mut events: Array<EventDetails> = ArrayTrait::<EventDetails>::new();
+
+    let organizer: ContractAddress = USER_ONE.try_into().unwrap();
+    start_cheat_caller_address(event_contract_address, organizer);
+    let initial_event_id = event_dispatcher.add_event("Blockchain Conference", "Tech Park");
+
+    let organizer_events: Array<EventDetails> = event_dispatcher.events_by_organizer();
+
+    let first_event: EventDetails = organizer_events.at(0).clone().try_into().unwrap();
+
+    assert(first_event.organizer == organizer, 'Wrong organizer');
+}
+
+#[test]
+fn test_fetch_all_attendees_on_event() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    let user_one_address: ContractAddress = USER_ONE.try_into().unwrap();
+    start_cheat_caller_address(event_contract_address, user_one_address);
+    let initial_event_id = event_dispatcher.add_event("Blockchain Conference", "Tech Park");
+    let another_event_id = event_dispatcher.add_event("Starknet Confrence", "Times Square");
+    stop_cheat_caller_address(event_contract_address);
+
+    let user_two_address: ContractAddress = USER_TWO.try_into().unwrap();
+    start_cheat_caller_address(event_contract_address, user_two_address);
+    event_dispatcher.register_for_event(initial_event_id);
+    stop_cheat_caller_address(event_contract_address);
+
+    let user_three_address: ContractAddress = USER_THREE.try_into().unwrap();
+    start_cheat_caller_address(event_contract_address, user_three_address);
+    event_dispatcher.register_for_event(initial_event_id);
+    stop_cheat_caller_address(event_contract_address);
+
+    let all_attendees_on_event: Array<EventRegistration> = event_dispatcher
+        .fetch_all_attendees_on_event(initial_event_id);
+    println!("the number is {}", all_attendees_on_event.len());
+    assert(all_attendees_on_event.len() == 2, 'Wrong number of attendees');
+    let first_attendee: EventRegistration = all_attendees_on_event
+        .at(0)
+        .clone()
+        .try_into()
+        .unwrap();
+    let second_attendee: EventRegistration = all_attendees_on_event
+        .at(1)
+        .clone()
+        .try_into()
+        .unwrap();
+    assert(first_attendee.attendee_address == USER_TWO.try_into().unwrap(), 'Wrong first attendee');
+    assert(
+        second_attendee.attendee_address == USER_THREE.try_into().unwrap(), 'Wrong second attendee',
     );
-    spy.assert_emitted(@array![(fee_collector_address, expected_event)]);
+}
 
-    // Verify fee collection
-    let total_fees = fee_collector.total_fees_collected();
-    assert(total_fees == fee_amount, 'Incorrect total fees');
+#[test]
+fn test_get_open_events() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
 
-    stop_cheat_caller_address(fee_collector_address);
+    let mut expected_events = ArrayTrait::new();
+
+    let organizer: ContractAddress = USER_ONE.try_into().unwrap();
+    start_cheat_caller_address(event_contract_address, organizer);
+    let initial_event_id = event_dispatcher.add_event("Blockchain Conference", "Tech Park");
+    assert(initial_event_id == 1, 'First event ID incorrect');
+    let open_events = event_dispatcher.get_open_events();
+    let expected = event_dispatcher.event_details(initial_event_id);
+    expected_events.append(expected);
+    assert(open_events == expected_events, 'Events not retrieved');
+
+    stop_cheat_caller_address(event_contract_address);
+
+    let organizer: ContractAddress = USER_TWO.try_into().unwrap();
+    start_cheat_caller_address(event_contract_address, organizer);
+    let second_event_id = event_dispatcher.add_event("Ethereum Workshop", "Innovation Hub");
+    assert(second_event_id == 2, 'Second event ID incorrect');
+    event_dispatcher.end_event_registration(second_event_id);
+    let second_event_details = event_dispatcher.event_details(second_event_id);
+    assert(second_event_details.is_closed, 'Event was not closed');
+    let open_events = event_dispatcher.get_open_events();
+    expected_events.append(second_event_details);
+    assert(open_events != expected_events, 'Function fetches closed events');
+}
+
+#[test]
+fn test_get_closed_events() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    let mut expected_events = ArrayTrait::new();
+
+    let organizer: ContractAddress = USER_ONE.try_into().unwrap();
+    start_cheat_caller_address(event_contract_address, organizer);
+    let initial_event_id = event_dispatcher.add_event("Blockchain Conference", "Tech Park");
+    assert(initial_event_id == 1, 'First event ID incorrect');
+    event_dispatcher.end_event_registration(initial_event_id);
+    let closed_events = event_dispatcher.get_closed_events();
+    let expected = event_dispatcher.event_details(initial_event_id);
+    expected_events.append(expected);
+    assert(closed_events == expected_events, 'Events not retrieved');
+
+    stop_cheat_caller_address(event_contract_address);
+
+    let organizer: ContractAddress = USER_TWO.try_into().unwrap();
+    start_cheat_caller_address(event_contract_address, organizer);
+    let second_event_id = event_dispatcher.add_event("Ethereum Workshop", "Innovation Hub");
+    assert(second_event_id == 2, 'Second event ID incorrect');
+    let second_event_details = event_dispatcher.event_details(second_event_id);
+    let closed_events = event_dispatcher.get_closed_events();
+    expected_events.append(second_event_details);
+    assert(closed_events != expected_events, 'Function includes open events');
+}
+
+#[test]
+fn test_fetch_all_paid_events() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    let mut expected_events = ArrayTrait::new();
+
+    let customer: ContractAddress = USER_ONE.try_into().unwrap();
+
+    start_cheat_caller_address(event_contract_address, customer);
+    let initial_event_id = event_dispatcher.add_event("Blockchain Conference", "Tech Park");
+    stop_cheat_caller_address(event_contract_address);
+
+    let customer: ContractAddress = USER_TWO.try_into().unwrap();
+    start_cheat_caller_address(event_contract_address, customer);
+    let second_event_id = event_dispatcher.add_event("Ethereum Workshop", "Innovation Hub");
+    stop_cheat_caller_address(event_contract_address);
+
+    start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
+    let paid_amount: u256 = 1000000_u256;
+    event_dispatcher.upgrade_event(initial_event_id, paid_amount);
+    let paid_events = event_dispatcher.fetch_all_paid_events();
+    let expected = event_dispatcher.event_details(initial_event_id);
+    expected_events.append(expected);
+    assert(paid_events == expected_events, 'Paid events not retrieved');
+
+    start_cheat_caller_address(event_contract_address, USER_TWO.try_into().unwrap());
+    event_dispatcher.upgrade_event(second_event_id, paid_amount);
+    let paid_events = event_dispatcher.fetch_all_paid_events();
+    let expected = event_dispatcher.event_details(second_event_id);
+    expected_events.append(expected);
+    assert(paid_events == expected_events, 'Paid events not retrieved');
 }
 
 #[test]
@@ -595,8 +1104,8 @@ fn test_only_owner_can_withdraw_paid_event_amount() {
     let erc20 = __deploy_erc20__();
 
     // Create paid event
-    let organizer: ContractAddress = USER_ONE.try_into().unwrap();
     start_cheat_caller_address(event_contract_address, organizer);
+    let organizer: ContractAddress = USER_ONE.try_into().unwrap();
     let event_id = event_dispatcher.add_event("Paid Workshop", "Devcon");
 
     // Upgrade event to paid with 100 token fee

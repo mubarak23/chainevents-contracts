@@ -9,10 +9,13 @@ pub mod Errors {
     pub const ALREADY_RSVP: felt252 = 'rsvp already exist';
 
     pub const INVALID_EVENT: felt252 = 'Invalid event';
+    pub const EVENT_NOT_CLOSED: felt252 = 'Event is not closed';
     pub const EVENT_CLOSED: felt252 = 'Event closed';
     pub const ALREADY_MINTED: felt252 = 'Event NFT already minted';
     pub const NOT_TOKEN_OWNER: felt252 = 'Not Token Owner';
     pub const TOKEN_DOES_NOT_EXIST: felt252 = 'Token Does Not Exist';
+
+    pub const NOT_A_PAID_EVENT: felt252 = 'Not a Paid Event';
     pub const TRANSFER_FAILED: felt252 = 'Transfer Failed';
-    pub const EVENT_NOT_PAID: felt252 = 'Event is not paid';
+    pub const PAYMENT_TOKEN_NOT_SET: felt252 = 'Payment Token Not Set';
 }

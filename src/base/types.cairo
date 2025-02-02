@@ -3,7 +3,7 @@ use core::starknet::ContractAddress;
 /// @title Event Details Structure
 /// @notice Contains comprehensive information about an event
 /// @dev Used to store and manage event-specific data
-#[derive(Drop, Serde, starknet::Store, Clone)]
+#[derive(Drop, Serde, starknet::Store, Clone, PartialEq)]
 pub struct EventDetails {
     pub event_id: u256,
     pub name: ByteArray,
@@ -26,7 +26,7 @@ pub struct EventRegistration {
     pub has_rsvp: bool,
     pub nft_contract_address: ContractAddress,
     pub nft_token_id: u256,
-    pub organizer: ContractAddress
+    pub organizer: ContractAddress,
 }
 
 
@@ -36,5 +36,5 @@ pub struct EventRegistration {
 #[derive(Debug, Drop, Serde, starknet::Store, Clone, PartialEq)]
 pub enum EventType {
     Free,
-    Paid
+    Paid,
 }
