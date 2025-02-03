@@ -776,28 +776,12 @@ pub mod ChainEvents {
             all_unpaid_events
         }
 
-        fn _fetch_user_paid_event(self: @ContractState, caller: ContractAddress) -> (u256, u256) git {
+        fn _fetch_user_paid_event(self: @ContractState, caller: ContractAddress) -> (u256, u256) {
             // read the paid event details.
             let (event_id, amount_paid) = self.paid_events.read(caller);
 
             // return event_id and amount paid.
             (event_id, amount_paid)
-        }
-        
-        fn _fetch_all_unpaid_events(self: @ContractState) -> Array<EventDetails> {
-            let mut all_unpaid_events = ArrayTrait::new();
-            let total_events_counts = self.event_counts.read();
-
-            let mut count: u256 = 1;
-
-            while count <= total_events_counts {
-                let current_event = self.event_details.read(count);
-                if current_event.event_type == EventType::Free {
-                    all_unpaid_events.append(current_event);
-                }
-                count += 1;
-            };
-            all_unpaid_events
         }
     }
 }
