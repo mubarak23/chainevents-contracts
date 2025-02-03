@@ -363,15 +363,11 @@ pub mod ChainEvents {
                     WithdrawalMade { event_id, event_organizer: event_owner, amount: event_amount }
                 );
         }
-
         fn fetch_user_paid_event(self: @ContractState) -> (u256, u256) {
             let caller = get_caller_address();
-            // read the paid event details.
-            let (event_id, amount_paid) = self.paid_events.read(caller);
-
-            // return event_id and amount paid.
-            (event_id, amount_paid)
+            self._fetch_user_paid_event(caller)
         }
+
         fn paid_event_ticket_counts(self: @ContractState, event_id: u256) -> u256 {
             self._paid_event_ticket_counts(event_id)
         }
@@ -778,6 +774,14 @@ pub mod ChainEvents {
                 count += 1;
             };
             all_unpaid_events
+        }
+
+        fn _fetch_user_paid_event(self: @ContractState, caller: ContractAddress) -> (u256, u256) git {
+            // read the paid event details.
+            let (event_id, amount_paid) = self.paid_events.read(caller);
+
+            // return event_id and amount paid.
+            (event_id, amount_paid)
         }
     }
 }
