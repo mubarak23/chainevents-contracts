@@ -3,7 +3,6 @@
 /// @notice A contract for creating and managing events with registration and attendance tracking
 /// @dev Implements Ownable and Upgradeable components from OpenZeppelin
 pub mod ChainEvents {
-    use openzeppelin_access::ownable::interface::IOwnable;
     use core::num::traits::zero::Zero;
     use chainevents_contracts::base::types::{EventDetails, EventRegistration, EventType};
     use chainevents_contracts::base::errors::Errors::{
@@ -417,6 +416,10 @@ pub mod ChainEvents {
         fn fetch_all_paid_events(self: @ContractState) -> Array<EventDetails> {
             self._fetch_all_paid_events()
         }
+
+        fn fetch_all_unpaid_events(self: @ContractState) -> Array<EventDetails> {
+            self._fetch_all_unpaid_events()
+        }
     }
 
     #[generate_trait]
@@ -753,8 +756,24 @@ pub mod ChainEvents {
 
         fn _paid_event_ticket_counts(self: @ContractState, event_id: u256) -> u256 {
             let caller = get_caller_address();
-            let (event_id, amount_paid) = self.paid_events.read(caller);
+            let (event_id, _) = self.paid_events.read(caller);
             self.paid_event_ticket_count.read(event_id)
+        }
+
+        fn _fetch_all_unpaid_events(self: @ContractState) -> Array<EventDetails> {
+            let mut all_unpaid_events = ArrayTrait::new();
+            let total_events_counts = self.event_counts.read();
+
+            let mut count: u256 = 1;
+
+            while count <= total_events_counts {
+                let current_event = self.event_details.read(count);
+                if current_event.event_type == EventType::Free {
+                    all_unpaid_events.append(current_event);
+                }
+                count += 1;
+            };
+            all_unpaid_events
         }
 
         fn _fetch_user_paid_event(self: @ContractState, caller: ContractAddress) -> (u256, u256) {

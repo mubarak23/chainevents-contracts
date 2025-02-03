@@ -1096,6 +1096,37 @@ fn test_fetch_all_paid_events() {
 }
 
 #[test]
+fn test_fetch_all_unpaid_events() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    let mut expected_events = ArrayTrait::new();
+
+    let customer: ContractAddress = USER_ONE.try_into().unwrap();
+
+    start_cheat_caller_address(event_contract_address, customer);
+    let initial_event_id = event_dispatcher.add_event("Blockchain Conference", "Zone Tech Park");
+    stop_cheat_caller_address(event_contract_address);
+
+    let customer: ContractAddress = USER_TWO.try_into().unwrap();
+    start_cheat_caller_address(event_contract_address, customer);
+    let second_event_id = event_dispatcher
+        .add_event("Starknet ZK Stark Proof Workshop", "TheBuidl Hub");
+    stop_cheat_caller_address(event_contract_address);
+
+    start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
+
+    let unpaid_events = event_dispatcher.fetch_all_unpaid_events();
+    let expected = event_dispatcher.event_details(initial_event_id);
+    let expected_2 = event_dispatcher.event_details(second_event_id);
+    println!("Unpaid event numbers : {:?}", unpaid_events.len());
+    expected_events.append(expected);
+    expected_events.append(expected_2);
+    assert(unpaid_events.len() == expected_events.len(), 'Unpaid events not retrieved');
+}
+
+#[test]
 #[should_panic(expected: 'Caller Not Owner')]
 fn test_only_owner_can_withdraw_paid_event_amount() {
     let strk_token = deploy_token_contract();
