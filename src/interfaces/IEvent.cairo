@@ -37,6 +37,7 @@ pub trait IEvent<TContractState> {
     fn get_open_events(self: @TContractState) -> Array<EventDetails>;
     fn get_closed_events(self: @TContractState) -> Array<EventDetails>;
     fn fetch_all_paid_events(self: @TContractState) -> Array<EventDetails>;
+    fn fetch_all_unpaid_events(self: @TContractState) -> Array<EventDetails>;
 
     fn upgrade(ref self: TContractState, new_class_hash: ClassHash);
 }
