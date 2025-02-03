@@ -1,0 +1,14 @@
+{
+  "devDependencies": {
+    "@types/node": "^22.13.0",
+    "typescript": "^5.7.3"
+  },
+  "dependencies": {
+    "@apibara/indexer": "^0.4.1",
+    "@apibara/protocol": "^0.4.9",
+    "@prisma/client": "^6.3.0",
+    "@types/express": "^5.0.0",
+    "express": "^4.21.2",
+    "starknet": "^6.11.0"
+  }
+}

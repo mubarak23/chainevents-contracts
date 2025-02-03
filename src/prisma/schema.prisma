@@ -1,0 +1,8 @@
+model ChainEvent {
+  id        String   @id @default(cuid())
+  type      String
+  data      Json
+  timestamp DateTime @default(now())
+
+  @@index([timestamp])
+}

@@ -3,3 +3,4 @@ target
 .snfoundry_cache/
 .DS_Store
 src/.DS_Store
+.node_modules
