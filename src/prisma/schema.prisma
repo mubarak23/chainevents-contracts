@@ -1,0 +1,15 @@
+model ChainEvent {
+  id              String   @id @default(cuid())
+  eventType       String   // Type of event (NewEventAdded, RegisteredForEvent, etc.)
+  eventId         String   // u256 event_id converted to string
+  name            String?  // For events with event_name/name
+  location        String?
+  userAddress     String?  // ContractAddress as string
+  eventOwner      String?  // ContractAddress as string
+  paidAmount      String?  // u256 as string
+  timestamp       DateTime @default(now())
+  
+  @@index([timestamp])
+  @@index([eventId])
+  @@index([eventType])
+}
