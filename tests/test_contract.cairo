@@ -950,7 +950,7 @@ fn test_events_by_organizer() {
     start_cheat_caller_address(event_contract_address, organizer);
     let initial_event_id = event_dispatcher.add_event("Blockchain Conference", "Tech Park");
 
-    let organizer_events: Array<EventDetails> = event_dispatcher.events_by_organizer();
+    let organizer_events: Array<EventDetails> = event_dispatcher.events_by_organizer(organizer);
 
     let first_event: EventDetails = organizer_events.at(0).clone().try_into().unwrap();
 
