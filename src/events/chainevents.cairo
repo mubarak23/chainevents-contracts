@@ -363,9 +363,8 @@ pub mod ChainEvents {
                     WithdrawalMade { event_id, event_organizer: event_owner, amount: event_amount }
                 );
         }
-        fn fetch_user_paid_event(self: @ContractState) -> (u256, u256) {
-            let caller = get_caller_address();
-            self._fetch_user_paid_event(caller)
+        fn fetch_user_paid_event(self: @ContractState, user: ContractAddress) -> (u256, u256) {
+            self._fetch_user_paid_event(user)
         }
 
         fn paid_event_ticket_counts(self: @ContractState, event_id: u256) -> u256 {
@@ -389,8 +388,10 @@ pub mod ChainEvents {
 
         /// @notice Get fetch all event created by the function caller to pay for an event
         /// @return Array of events created by the caller
-        fn events_by_organizer(self: @ContractState) -> Array<EventDetails> {
-            self._events_by_organizer()
+        fn events_by_organizer(
+            self: @ContractState, organizer: ContractAddress
+        ) -> Array<EventDetails> {
+            self._events_by_organizer(organizer)
         }
 
 
@@ -700,14 +701,16 @@ pub mod ChainEvents {
             attendees
         }
 
-        fn _events_by_organizer(self: @ContractState) -> Array<EventDetails> {
-            let caller = get_caller_address();
+        fn _events_by_organizer(
+            self: @ContractState, organizer: ContractAddress
+        ) -> Array<EventDetails> {
+            //  let caller = get_caller_address();
             let mut caller_events = ArrayTrait::new();
             let mut count = 0;
             let event_count = self.event_counts.read();
 
             while count <= event_count {
-                if self.event_owners.read(count) == caller {
+                if self.event_owners.read(count) == organizer {
                     caller_events.append(self.event_details.read(count));
                 }
                 count += 1;

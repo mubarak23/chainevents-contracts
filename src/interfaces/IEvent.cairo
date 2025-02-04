@@ -26,11 +26,13 @@ pub trait IEvent<TContractState> {
     fn attendee_event_details(self: @TContractState, event_id: u256) -> EventRegistration;
     fn attendees_registered(self: @TContractState, event_id: u256) -> u256;
     fn event_registration_count(self: @TContractState, event_id: u256) -> u256;
-    fn fetch_user_paid_event(self: @TContractState) -> (u256, u256);
+    fn fetch_user_paid_event(self: @TContractState, user: ContractAddress) -> (u256, u256);
     fn paid_event_ticket_counts(self: @TContractState, event_id: u256) -> u256;
     fn event_total_amount_paid(self: @TContractState, event_id: u256) -> u256;
     fn get_events(self: @TContractState) -> Array<EventDetails>;
-    fn events_by_organizer(self: @TContractState) -> Array<EventDetails>;
+    fn events_by_organizer(
+        self: @TContractState, organizer: ContractAddress
+    ) -> Array<EventDetails>;
     fn fetch_all_attendees_on_event(
         self: @TContractState, event_id: u256,
     ) -> Array<EventRegistration>;
