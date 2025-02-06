@@ -1,6 +1,0 @@
-{
-  "watch": ["./"],
-  "ext": ".ts,.js",
-  "ignore": [],
-  "exec": "bun ./server.js"
-}
