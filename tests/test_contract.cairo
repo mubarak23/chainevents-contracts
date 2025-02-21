@@ -1289,6 +1289,4 @@ fn test_withdraw_paid_event_amount_for_closed_event() {
     assert(user_two_balance == 0, 'Incorrect attendee balance');
 }
 
-fn test_verify_event_by_owner(){
-    
-}
+fn test_verify_event_by_owner() {}
