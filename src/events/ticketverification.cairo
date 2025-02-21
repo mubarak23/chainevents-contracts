@@ -29,7 +29,7 @@ pub mod TicketVerification {
         // Mapping from ticket ID to event ID
         ticket_events: Map::<u256, u256>,
         // Mapping from event ID to event details (timestamp, venue)
-        ticket_events: Map::<u256, TicketEvent>,
+        ticket_event: Map::<u256, TicketEvent>,
         // Contract owner
         owner: ContractAddress,
         // Counter for ticket IDs
@@ -116,6 +116,44 @@ pub mod TicketVerification {
         fn verify_ticket(ref self: ContractState, ticket_id: u256) -> bool {
             false
         }
+
+        fn verify_ticket_event(ref self: ContractState, ticket_id: u256) -> bool {
+            let ticket = self.ticket_events.read(ticket_id);
+            let ticket_used = self.ticket_used.read(ticket_id);
+            let ticket_owner = self.ticket_owners.read(ticket_id);
+            assert_eq!(ticket_owner == get_caller_address(), "Callet not owner of the ticket");
+            assert!(ticket != 0, "No ticket fouind");
+            assert!(!ticket_used, "Ticket already used");
+            self.ticket_used.write(ticket_id, true);
+            self
+                .emit(
+                    Event::TicketUsed(
+                        TicketUsed {
+                            ticket_id: ticket_id,
+                            event_id: ticket.event_id,
+                            user: get_caller_address()
+                        }
+                    )
+                );
+            true
+        }
+
+        fn transfer_ticket(ref self: ContractState, ticket_id: u256, to: ContractAddress) {
+            let ticket = self.ticket_events.read(ticket_id);
+            let ticket_owner = self.ticket_owners.read(ticket_id);
+            let ticket_event = self.ticket_event.read(ticket.event_id);
+            assert_eq!(ticket_owner == get_caller_address(), "Callet not owner of the ticket");
+            assert!(ticket != 0, "No ticket fouind");
+            assert!(!ticket_event.transferable, "Ticket not transferable");
+            self.ticket_owners.write(ticket_id, to);
+            self
+                .emit(
+                    Event::TicketTransferred(
+                        TicketTransferred { ticket_id: ticket_id, from: ticket_owner, to: to }
+                    )
+                );
+        }
+
         fn transfer_ticket(ref self: ContractState, ticket_id: u256, to: ContractAddress) {}
 
         /// Read Functions
