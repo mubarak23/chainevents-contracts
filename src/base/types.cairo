@@ -38,3 +38,14 @@ pub enum EventType {
     Free,
     Paid,
 }
+
+#[derive(Drop, Serde, starknet::Store, Clone)]
+pub struct TicketEvent {
+    timestamp: u64,
+    venue: felt252,
+    transferable: bool,
+    active: bool,
+    amount: u256,
+    ticket_num: u256,
+}
+

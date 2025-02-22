@@ -129,6 +129,5 @@ pub mod TicketVerification {
 
             self.ticket_events.read(event_id)        
         }
-        
-    }
+
 }
