@@ -17,7 +17,7 @@ pub trait ITicketVerification<TContractState> {
     fn transfer_ticket(ref self: TContractState, ticket_id: u256, to: ContractAddress);
 
     /// Read Functions
-    // fn get_ticket_owner(self: @TContractState, ticket_id: u256) -> ContractAddress;
+    fn get_ticket_owner(self: @TContractState, ticket_id: u256) -> ContractAddress;
     fn is_ticket_used(self: @TContractState, ticket_id: u256) -> bool;
     // fn get_event_details(self: @TContractState, event_id: u256) -> EventDetails;
 }
