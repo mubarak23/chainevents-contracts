@@ -211,7 +211,12 @@ pub mod TicketVerification {
         fn transfer_ticket(ref self: ContractState, ticket_id: u256, to: ContractAddress) {}
 
         /// Read Functions
-        // fn get_ticket_owner(self: @ContractState, ticket_id: u256) -> ContractAddress {}
+        fn get_ticket_owner(self: @ContractState, ticket_id: u256) -> ContractAddress {
+            let ticket_owner = self.ticket_owners.read(ticket_id);
+            assert(ticket_owner!=contract_address_const::<0x0>(), 'Ticket not exists');
+            ticket_owner
+        }
+
         fn is_ticket_used(self: @ContractState, ticket_id: u256) -> bool {
             true
         }
