@@ -1288,3 +1288,57 @@ fn test_withdraw_paid_event_amount_for_closed_event() {
     let user_two_balance = payment_token.balance_of(user_two);
     assert(user_two_balance == 0, 'Incorrect attendee balance');
 }
+
+
+#[test]
+fn test_get_event_details() {
+    // Setup
+    let payment_token = deploy_token_contract();
+    let (nft_contract, nft_class_hash) = deploy_eventnft_contract(0);
+    let ticket_verification_contract_address = deploy_ticket_verification_contract(
+        nft_class_hash, nft_contract, payment_token
+    );
+    let ticket_verification_contract = ITicketVerificationDispatcher {
+        contract_address: ticket_verification_contract_address
+    };
+
+    // Create an event
+    start_cheat_caller_address(ticket_verification_contract_address, OWNER());
+    
+    let timestamp = 1687324800_u64;
+    let venue = 'Concert Hall';
+    let transferable = true;
+    let amount = 100_u256;
+    let ticket_num = 1000_u256;
+
+    let event_id = ticket_verification_contract
+        .create_ticket_event(timestamp, venue, transferable, amount, ticket_num);
+
+    stop_cheat_caller_address(ticket_verification_contract_address);
+    // Fetch event details
+    let event_details = ticket_verification_contract.get_event_details(event_id);
+    // Verify event details
+    assert(event_details.timestamp == timestamp, 'Wrong event timestamp');
+    assert(event_details.venue == venue, 'Wrong event venue');
+    assert(event_details.transferable == transferable, 'Wrong transferable flag');
+    assert(event_details.amount == amount, 'Wrong ticket amount');
+    assert(event_details.ticket_num == ticket_num, 'Wrong ticket count');
+}
+
+#[test]
+#[should_panic(expected: 'INVALID_EVENT_ID')]
+fn test_get_event_details_invalid_event_id() {
+    // Setup contracts
+    let payment_token = deploy_token_contract();
+    let (nft_contract, nft_class_hash) = deploy_eventnft_contract(0);
+    let ticket_verification_contract_address = deploy_ticket_verification_contract(
+        nft_class_hash, nft_contract, payment_token
+    );
+    let ticket_verification_contract = ITicketVerificationDispatcher {
+        contract_address: ticket_verification_contract_address
+    };
+
+    let invalid_event_id = 999_u256;
+
+    ticket_verification_contract.get_event_details(invalid_event_id);
+}
