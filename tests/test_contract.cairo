@@ -1745,3 +1745,4 @@ fn test_get_event_details_invalid_event_id() {
 
     ticket_verification_contract.get_event_details(invalid_event_id);
 }
+
