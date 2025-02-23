@@ -1,4 +1,4 @@
-use chainevents_contracts::base::types::{EventDetails, EventRegistration};
+use chainevents_contracts::base::types::{EventDetails,TicketEvent, EventRegistration};
 use core::starknet::{ContractAddress, ClassHash};
 /// @title Event Ticket Verification Interface
 #[starknet::interface]
@@ -19,5 +19,5 @@ pub trait ITicketVerification<TContractState> {
     /// Read Functions
     fn get_ticket_owner(self: @TContractState, ticket_id: u256) -> ContractAddress;
     fn is_ticket_used(self: @TContractState, ticket_id: u256) -> bool;
-    fn get_event_details(self: @TContractState, event_id: u256) -> Event;
+   fn get_event_details(self: @TContractState, event_id: u256) -> TicketEvent;
 }
