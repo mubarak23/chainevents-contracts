@@ -1606,7 +1606,7 @@ fn test_is_ticket_used_false() {
 
     // get data about ticket usage
     let is_ticket_used = ticket_verification_contract.is_ticket_used(ticket_id);
-    
+
     // assert ticket used
     assert!(!is_ticket_used, "Should not be used");
 }
@@ -1642,15 +1642,15 @@ fn test_is_ticket_used_true() {
     start_cheat_caller_address(ticket_verification_contract_address, buyer);
     let ticket_id = ticket_verification_contract.mint_ticket(event_id, buyer);
     stop_cheat_caller_address(ticket_verification_contract_address);
-    
-    // call "verify_ticket" to use the ticket 
+
+    // call "verify_ticket" to use the ticket
     start_cheat_caller_address(ticket_verification_contract_address, buyer);
     ticket_verification_contract.verify_ticket(event_id);
     stop_cheat_caller_address(ticket_verification_contract_address);
 
     // get data about ticket usage
     let is_ticket_used = ticket_verification_contract.is_ticket_used(ticket_id);
-    
+
     // assert ticket used
     assert!(is_ticket_used, "Should be already used");
 }
@@ -1687,7 +1687,7 @@ fn test_is_ticket_used_not_exist() {
     start_cheat_caller_address(ticket_verification_contract_address, buyer);
     let ticket_id = ticket_verification_contract.mint_ticket(event_id, buyer);
     stop_cheat_caller_address(ticket_verification_contract_address);
-    
+
     // try to call is_ticket_used with a non existant id
     let not_existant_ticket_id = ticket_id + 1;
     ticket_verification_contract.is_ticket_used(not_existant_ticket_id);

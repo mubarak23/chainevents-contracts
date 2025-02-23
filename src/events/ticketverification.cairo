@@ -206,9 +206,9 @@ pub mod TicketVerification {
         }
 
         fn verify_ticket(ref self: ContractState, ticket_id: u256) -> bool {
-            // IMPORTANT NOTE 
+            // IMPORTANT NOTE
             // This function was modified to being able to test the function "is_ticket_used".
-            // Feel free to override with the real implementation when it's ready. 
+            // Feel free to override with the real implementation when it's ready.
             self.ticket_used.entry(ticket_id).write(true);
             false
         }
@@ -217,13 +217,13 @@ pub mod TicketVerification {
         /// Read Functions
         fn get_ticket_owner(self: @ContractState, ticket_id: u256) -> ContractAddress {
             let ticket_owner = self.ticket_owners.read(ticket_id);
-            assert(ticket_owner!=contract_address_const::<0x0>(), 'Ticket not exists');
+            assert(ticket_owner != contract_address_const::<0x0>(), 'Ticket not exists');
             ticket_owner
         }
-        
+
         fn is_ticket_used(self: @ContractState, ticket_id: u256) -> bool {
             let ticket_owner = self.ticket_owners.read(ticket_id);
-            assert(ticket_owner!=contract_address_const::<0x0>(), 'Ticket not exists');
+            assert(ticket_owner != contract_address_const::<0x0>(), 'Ticket not exists');
             let is_used = self.ticket_used.read(ticket_id);
             is_used
         }
