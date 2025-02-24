@@ -225,9 +225,7 @@ pub mod TicketVerification {
                 .emit(
                     Event::TicketUsed(
                         TicketUsed {
-                            ticket_id: ticket_id,
-                            event_id: ticket,
-                            user: get_caller_address()
+                            ticket_id: ticket_id, event_id: ticket, user: get_caller_address()
                         }
                     )
                 );

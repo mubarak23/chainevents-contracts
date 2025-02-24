@@ -1747,3 +1747,36 @@ fn test_get_event_details_invalid_event_id() {
     ticket_verification_contract.get_event_details(invalid_event_id);
 }
 
+
+#[test]
+fn test_ticket_transfer() {
+    // Setup
+    let payment_token = deploy_token_contract();
+    let (nft_contract, nft_class_hash) = deploy_eventnft_contract(0);
+    let ticket_verification_contract_address = deploy_ticket_verification_contract(
+        nft_class_hash, nft_contract, payment_token
+    );
+    let ticket_verification_contract = ITicketVerificationDispatcher {
+        contract_address: ticket_verification_contract_address
+    };
+    let token = IERC20Dispatcher { contract_address: payment_token };
+
+    // Create event
+    start_cheat_caller_address(ticket_verification_contract_address, OWNER());
+    let amount = 100_u256;
+    let event_id = ticket_verification_contract
+        .create_ticket_event(1687324800_u64, 'Concert Hall', true, amount, 1000_u256);
+    stop_cheat_caller_address(ticket_verification_contract_address);
+
+    // Setup buyer
+    let buyer: ContractAddress = 'buyer'.try_into().unwrap();
+    start_cheat_caller_address(payment_token, buyer);
+    token.mint(buyer, amount);
+    token.approve(ticket_verification_contract_address, amount);
+    stop_cheat_caller_address(payment_token);
+
+    // Mint ticket
+    start_cheat_caller_address(ticket_verification_contract_address, buyer);
+    let ticket_id = ticket_verification_contract.mint_ticket(event_id, buyer);
+    stop_cheat_caller_address(ticket_verification_contract_address);
+}
