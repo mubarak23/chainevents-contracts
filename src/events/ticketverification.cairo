@@ -217,7 +217,7 @@ pub mod TicketVerification {
             let ticket = self.ticket_events.read(ticket_id);
             let ticket_used = self.ticket_used.read(ticket_id);
             let ticket_owner = self.ticket_owners.read(ticket_id);
-            assert_eq!(ticket_owner == get_caller_address(), "Callet not owner of the ticket");
+            assert!(ticket_owner == get_caller_address(), "Callet not owner of the ticket");
             assert!(ticket != 0, "No ticket fouind");
             assert!(!ticket_used, "Ticket already used");
             self.ticket_used.write(ticket_id, true);
@@ -226,7 +226,7 @@ pub mod TicketVerification {
                     Event::TicketUsed(
                         TicketUsed {
                             ticket_id: ticket_id,
-                            event_id: ticket.event_id,
+                            event_id: ticket,
                             user: get_caller_address()
                         }
                     )
@@ -237,8 +237,8 @@ pub mod TicketVerification {
         fn transfer_ticket(ref self: ContractState, ticket_id: u256, to: ContractAddress) {
             let ticket = self.ticket_events.read(ticket_id);
             let ticket_owner = self.ticket_owners.read(ticket_id);
-            let ticket_event = self.ticket_event.read(ticket.event_id);
-            assert_eq!(ticket_owner == get_caller_address(), "Callet not owner of the ticket");
+            let ticket_event = self.ticket_events_details.read(ticket);
+            assert!(ticket_owner == get_caller_address(), "Callet not owner of the ticket");
             assert!(ticket != 0, "No ticket fouind");
             assert!(!ticket_event.transferable, "Ticket not transferable");
             self.ticket_owners.write(ticket_id, to);
@@ -249,8 +249,6 @@ pub mod TicketVerification {
                     )
                 );
         }
-
-        fn transfer_ticket(ref self: ContractState, ticket_id: u256, to: ContractAddress) {}
 
         /// Read Functions
         fn get_ticket_owner(self: @ContractState, ticket_id: u256) -> ContractAddress {
