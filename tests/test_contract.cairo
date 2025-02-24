@@ -1707,7 +1707,7 @@ fn test_get_event_details() {
 
     // Create an event
     start_cheat_caller_address(ticket_verification_contract_address, OWNER());
-    
+
     let timestamp = 1687324800_u64;
     let venue = 'Concert Hall';
     let transferable = true;
