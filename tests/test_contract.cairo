@@ -4,7 +4,8 @@
 
 use core::result::ResultTrait;
 use core::traits::TryInto;
-use starknet::{ContractAddress};
+use starknet::{ContractAddress, ClassHash};
+use core::starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
 
 use snforge_std::{
     declare, start_cheat_caller_address, stop_cheat_caller_address, ContractClassTrait,
@@ -14,9 +15,14 @@ use snforge_std::{
 use openzeppelin::token::erc20::interface::{IERC20CamelDispatcher, IERC20CamelDispatcherTrait};
 
 use chainevents_contracts::interfaces::IEvent::{IEventDispatcher, IEventDispatcherTrait};
-use chainevents_contracts::events::chainevents::ChainEvents;
+use chainevents_contracts::events::{
+    chainevents::ChainEvents, ticketverification::TicketVerification
+};
 use chainevents_contracts::base::types::{EventDetails, EventType, EventRegistration};
 use chainevents_contracts::interfaces::IPaymentToken::{IERC20Dispatcher, IERC20DispatcherTrait};
+use chainevents_contracts::interfaces::ITicketVerification::{
+    ITicketVerificationDispatcher, ITicketVerificationDispatcherTrait
+};
 
 const USER_ONE: felt252 = 'JOE';
 const USER_TWO: felt252 = 'DOE';
@@ -51,6 +57,29 @@ fn __setup__(strk_token: ContractAddress) -> ContractAddress {
 fn deploy_token_contract() -> ContractAddress {
     let contract = declare("PaymentToken").unwrap().contract_class();
     let (contract_address, _) = contract.deploy(@ArrayTrait::new()).unwrap();
+    contract_address
+}
+
+fn deploy_eventnft_contract(event_id: u256) -> (ContractAddress, ClassHash) {
+    let contract = declare("EventNFT").unwrap().contract_class();
+    let mut constructor_calldata: Array<felt252> = array![];
+    event_id.serialize(ref constructor_calldata);
+    let (contract_address, _) = contract.deploy(@constructor_calldata).unwrap();
+    (contract_address, *contract.class_hash)
+}
+
+fn deploy_ticket_verification_contract(
+    ticket_event_nft_class_hash: ClassHash,
+    ticket_event_nft_contract_address: ContractAddress,
+    payment_token_contract_address: ContractAddress
+) -> ContractAddress {
+    let contract = declare("TicketVerification").unwrap().contract_class();
+    let mut constructor_calldata: Array<felt252> = array![];
+    OWNER().serialize(ref constructor_calldata);
+    ticket_event_nft_class_hash.serialize(ref constructor_calldata);
+    ticket_event_nft_contract_address.serialize(ref constructor_calldata);
+    payment_token_contract_address.serialize(ref constructor_calldata);
+    let (contract_address, _) = contract.deploy(@constructor_calldata).unwrap();
     contract_address
 }
 
@@ -1289,4 +1318,432 @@ fn test_withdraw_paid_event_amount_for_closed_event() {
     assert(user_two_balance == 0, 'Incorrect attendee balance');
 }
 
-fn test_verify_event_by_owner() {}
+
+#[test]
+fn test_constructor() {
+    // Deploy dependencies
+    let payment_token = deploy_token_contract();
+    let (nft_contract, nft_class_hash) = deploy_eventnft_contract(0);
+    let ticket_verification_contract_address = deploy_ticket_verification_contract(
+        nft_class_hash, nft_contract, payment_token
+    );
+
+    // Deploy dispatcher
+    let ticket_verification_contract = ITicketVerificationDispatcher {
+        contract_address: ticket_verification_contract_address
+    };
+    // TODO: Make assertions on contract state
+}
+
+#[test]
+fn test_create_ticket_event() {
+    // Setup
+    let payment_token = deploy_token_contract();
+    let (nft_contract, nft_class_hash) = deploy_eventnft_contract(0);
+    let ticket_verification_contract_address = deploy_ticket_verification_contract(
+        nft_class_hash, nft_contract, payment_token
+    );
+    let ticket_verification_contract = ITicketVerificationDispatcher {
+        contract_address: ticket_verification_contract_address
+    };
+
+    // Test event creation
+    start_cheat_caller_address(ticket_verification_contract_address, OWNER());
+
+    let timestamp = 1687324800_u64;
+    let venue = 'Concert Hall';
+    let transferable = true;
+    let amount = 100_u256;
+    let ticket_num = 1000_u256;
+
+    let mut spy = spy_events();
+
+    let event_id = ticket_verification_contract
+        .create_ticket_event(timestamp, venue, transferable, amount, ticket_num);
+
+    // Verify event creation
+    assert(event_id == 0, 'Wrong event ID');
+
+    // Verify event emission
+    let expected_event = TicketVerification::Event::TicketEventCreated(
+        TicketVerification::TicketEventCreated { event_id, timestamp, venue, amount }
+    );
+    spy.assert_emitted(@array![(ticket_verification_contract_address, expected_event)]);
+
+    stop_cheat_caller_address(ticket_verification_contract_address);
+}
+
+#[test]
+#[should_panic(expected: 'Caller is not the owner')]
+fn test_create_ticket_event_not_owner() {
+    // Setup
+    let payment_token = deploy_token_contract();
+    let (nft_contract, nft_class_hash) = deploy_eventnft_contract(0);
+    let ticket_verification_contract_address = deploy_ticket_verification_contract(
+        nft_class_hash, nft_contract, payment_token
+    );
+    let ticket_verification_contract = ITicketVerificationDispatcher {
+        contract_address: ticket_verification_contract_address
+    };
+
+    let non_owner: ContractAddress = 'non_owner'.try_into().unwrap();
+    start_cheat_caller_address(ticket_verification_contract_address, non_owner);
+
+    ticket_verification_contract
+        .create_ticket_event(1687324800_u64, 'Concert Hall', true, 100_u256, 1000_u256);
+}
+
+#[test]
+fn test_mint_ticket() {
+    // Setup
+    let payment_token = deploy_token_contract();
+    let (nft_contract, nft_class_hash) = deploy_eventnft_contract(0);
+    let ticket_verification_contract_address = deploy_ticket_verification_contract(
+        nft_class_hash, nft_contract, payment_token
+    );
+    let ticket_verification_contract = ITicketVerificationDispatcher {
+        contract_address: ticket_verification_contract_address
+    };
+    let token = IERC20Dispatcher { contract_address: payment_token };
+
+    // Create event
+    start_cheat_caller_address(ticket_verification_contract_address, OWNER());
+    let amount = 100_u256;
+    let event_id = ticket_verification_contract
+        .create_ticket_event(1687324800_u64, 'Concert Hall', true, amount, 1000_u256);
+    stop_cheat_caller_address(ticket_verification_contract_address);
+
+    // Setup buyer
+    let buyer: ContractAddress = 'buyer'.try_into().unwrap();
+    start_cheat_caller_address(payment_token, buyer);
+    token.mint(buyer, amount);
+    token.approve(ticket_verification_contract_address, amount);
+    stop_cheat_caller_address(payment_token);
+
+    // Mint ticket
+    start_cheat_caller_address(ticket_verification_contract_address, buyer);
+
+    let mut spy = spy_events();
+    let ticket_id = ticket_verification_contract.mint_ticket(event_id, buyer);
+
+    // Verify ticket minting
+    assert(ticket_id == 0, 'Wrong ticket ID');
+    assert(token.balance_of(buyer) == 0, 'Wrong buyer balance');
+    assert(
+        token.balance_of(ticket_verification_contract_address) == amount, 'Wrong contract balance'
+    );
+
+    // Verify event emission
+    let expected_event = TicketVerification::Event::TicketMinted(
+        TicketVerification::TicketMinted { ticket_id, event_id, owner: buyer }
+    );
+    spy.assert_emitted(@array![(ticket_verification_contract_address, expected_event)]);
+
+    stop_cheat_caller_address(ticket_verification_contract_address);
+}
+
+#[test]
+#[should_panic(expected: 'Event is not active')]
+fn test_mint_ticket_inactive_event() {
+    // Setup
+    let payment_token = deploy_token_contract();
+    let (nft_contract, nft_class_hash) = deploy_eventnft_contract(0);
+    let ticket_verification_contract_address = deploy_ticket_verification_contract(
+        nft_class_hash, nft_contract, payment_token
+    );
+    let ticket_verification_contract = ITicketVerificationDispatcher {
+        contract_address: ticket_verification_contract_address
+    };
+    let token = IERC20Dispatcher { contract_address: payment_token };
+
+    let buyer: ContractAddress = 'buyer'.try_into().unwrap();
+    start_cheat_caller_address(ticket_verification_contract_address, buyer);
+    ticket_verification_contract.mint_ticket(999, buyer); // Non-existent event ID
+    stop_cheat_caller_address(ticket_verification_contract_address);
+}
+
+#[test]
+#[should_panic(expected: 'Insufficient allowance')]
+fn test_mint_ticket_insufficient_allowance() {
+    // Setup
+    let payment_token = deploy_token_contract();
+    let (nft_contract, nft_class_hash) = deploy_eventnft_contract(0);
+    let ticket_verification_contract_address = deploy_ticket_verification_contract(
+        nft_class_hash, nft_contract, payment_token
+    );
+    let ticket_verification_contract = ITicketVerificationDispatcher {
+        contract_address: ticket_verification_contract_address
+    };
+    let token = IERC20Dispatcher { contract_address: payment_token };
+
+    // Create event
+    start_cheat_caller_address(ticket_verification_contract_address, OWNER());
+    let amount = 100_u256;
+    let event_id = ticket_verification_contract
+        .create_ticket_event(1687324800_u64, 'Concert Hall', true, amount, 1000_u256);
+    stop_cheat_caller_address(ticket_verification_contract_address);
+
+    // Try to mint without sufficient allowance
+    let buyer: ContractAddress = 'buyer'.try_into().unwrap();
+    start_cheat_caller_address(payment_token, buyer);
+    token.mint(buyer, amount); // Give tokens but don't approve
+    stop_cheat_caller_address(payment_token);
+
+    start_cheat_caller_address(ticket_verification_contract_address, buyer);
+    ticket_verification_contract.mint_ticket(event_id, buyer);
+    stop_cheat_caller_address(ticket_verification_contract_address);
+}
+
+
+#[test]
+fn test_get_ticket_owner() {
+    // Setup
+    let payment_token = deploy_token_contract();
+    let (nft_contract, nft_class_hash) = deploy_eventnft_contract(0);
+    let ticket_verification_contract_address = deploy_ticket_verification_contract(
+        nft_class_hash, nft_contract, payment_token
+    );
+    let ticket_verification_contract = ITicketVerificationDispatcher {
+        contract_address: ticket_verification_contract_address
+    };
+    let token = IERC20Dispatcher { contract_address: payment_token };
+
+    // Create event
+    start_cheat_caller_address(ticket_verification_contract_address, OWNER());
+    let amount = 100_u256;
+    let event_id = ticket_verification_contract
+        .create_ticket_event(1687324800_u64, 'Concert Hall', true, amount, 1000_u256);
+    stop_cheat_caller_address(ticket_verification_contract_address);
+
+    // Setup buyer
+    let buyer: ContractAddress = 'buyer'.try_into().unwrap();
+    start_cheat_caller_address(payment_token, buyer);
+    token.mint(buyer, amount);
+    token.approve(ticket_verification_contract_address, amount);
+    stop_cheat_caller_address(payment_token);
+
+    // Mint ticket
+    start_cheat_caller_address(ticket_verification_contract_address, buyer);
+    let ticket_id = ticket_verification_contract.mint_ticket(event_id, buyer);
+    stop_cheat_caller_address(ticket_verification_contract_address);
+
+    // Verify ticket owner
+    let ticket_owner = ticket_verification_contract.get_ticket_owner(ticket_id);
+
+    // assert ticket owner
+    assert(ticket_owner == buyer, 'Owner is not the buyer');
+}
+
+#[test]
+#[should_panic(expected: 'Ticket not exists')]
+fn test_get_ticket_owner_ticket_not_exist() {
+    // Setup
+    let payment_token = deploy_token_contract();
+    let (nft_contract, nft_class_hash) = deploy_eventnft_contract(0);
+    let ticket_verification_contract_address = deploy_ticket_verification_contract(
+        nft_class_hash, nft_contract, payment_token
+    );
+    let ticket_verification_contract = ITicketVerificationDispatcher {
+        contract_address: ticket_verification_contract_address
+    };
+    let token = IERC20Dispatcher { contract_address: payment_token };
+
+    // Create event
+    start_cheat_caller_address(ticket_verification_contract_address, OWNER());
+    let amount = 100_u256;
+    let event_id = ticket_verification_contract
+        .create_ticket_event(1687324800_u64, 'Concert Hall', true, amount, 1000_u256);
+    stop_cheat_caller_address(ticket_verification_contract_address);
+
+    // Setup buyer
+    let buyer: ContractAddress = 'buyer'.try_into().unwrap();
+    start_cheat_caller_address(payment_token, buyer);
+    token.mint(buyer, amount);
+    token.approve(ticket_verification_contract_address, amount);
+    stop_cheat_caller_address(payment_token);
+
+    // Mint ticket
+    start_cheat_caller_address(ticket_verification_contract_address, buyer);
+    let ticket_id = ticket_verification_contract.mint_ticket(event_id, buyer);
+    stop_cheat_caller_address(ticket_verification_contract_address);
+
+    // Ask for a ticket id different that the minted one (no exists)
+    let not_existant_ticket_id = ticket_id + 1;
+    // should fail with 'Ticket not exists'
+    ticket_verification_contract.get_ticket_owner(not_existant_ticket_id);
+}
+
+#[test]
+fn test_is_ticket_used_false() {
+    // Setup
+    let payment_token = deploy_token_contract();
+    let (nft_contract, nft_class_hash) = deploy_eventnft_contract(0);
+    let ticket_verification_contract_address = deploy_ticket_verification_contract(
+        nft_class_hash, nft_contract, payment_token
+    );
+    let ticket_verification_contract = ITicketVerificationDispatcher {
+        contract_address: ticket_verification_contract_address
+    };
+    let token = IERC20Dispatcher { contract_address: payment_token };
+
+    // Create event
+    start_cheat_caller_address(ticket_verification_contract_address, OWNER());
+    let amount = 100_u256;
+    let event_id = ticket_verification_contract
+        .create_ticket_event(1687324800_u64, 'Concert Hall', true, amount, 1000_u256);
+    stop_cheat_caller_address(ticket_verification_contract_address);
+
+    // Setup buyer
+    let buyer: ContractAddress = 'buyer'.try_into().unwrap();
+    start_cheat_caller_address(payment_token, buyer);
+    token.mint(buyer, amount);
+    token.approve(ticket_verification_contract_address, amount);
+    stop_cheat_caller_address(payment_token);
+
+    // Mint ticket
+    start_cheat_caller_address(ticket_verification_contract_address, buyer);
+    let ticket_id = ticket_verification_contract.mint_ticket(event_id, buyer);
+    stop_cheat_caller_address(ticket_verification_contract_address);
+
+    // get data about ticket usage
+    let is_ticket_used = ticket_verification_contract.is_ticket_used(ticket_id);
+
+    // assert ticket used
+    assert!(!is_ticket_used, "Should not be used");
+}
+
+#[test]
+fn test_is_ticket_used_true() {
+    // Setup
+    let payment_token = deploy_token_contract();
+    let (nft_contract, nft_class_hash) = deploy_eventnft_contract(0);
+    let ticket_verification_contract_address = deploy_ticket_verification_contract(
+        nft_class_hash, nft_contract, payment_token
+    );
+    let ticket_verification_contract = ITicketVerificationDispatcher {
+        contract_address: ticket_verification_contract_address
+    };
+    let token = IERC20Dispatcher { contract_address: payment_token };
+
+    // Create event
+    start_cheat_caller_address(ticket_verification_contract_address, OWNER());
+    let amount = 100_u256;
+    let event_id = ticket_verification_contract
+        .create_ticket_event(1687324800_u64, 'Concert Hall', true, amount, 1000_u256);
+    stop_cheat_caller_address(ticket_verification_contract_address);
+
+    // Setup buyer
+    let buyer: ContractAddress = 'buyer'.try_into().unwrap();
+    start_cheat_caller_address(payment_token, buyer);
+    token.mint(buyer, amount);
+    token.approve(ticket_verification_contract_address, amount);
+    stop_cheat_caller_address(payment_token);
+
+    // Mint ticket
+    start_cheat_caller_address(ticket_verification_contract_address, buyer);
+    let ticket_id = ticket_verification_contract.mint_ticket(event_id, buyer);
+    stop_cheat_caller_address(ticket_verification_contract_address);
+
+    // call "verify_ticket" to use the ticket
+    start_cheat_caller_address(ticket_verification_contract_address, buyer);
+    ticket_verification_contract.verify_ticket(event_id);
+    stop_cheat_caller_address(ticket_verification_contract_address);
+
+    // get data about ticket usage
+    let is_ticket_used = ticket_verification_contract.is_ticket_used(ticket_id);
+
+    // assert ticket used
+    assert!(is_ticket_used, "Should be already used");
+}
+
+#[test]
+#[should_panic(expected: 'Ticket not exists')]
+fn test_is_ticket_used_not_exist() {
+    // Setup
+    let payment_token = deploy_token_contract();
+    let (nft_contract, nft_class_hash) = deploy_eventnft_contract(0);
+    let ticket_verification_contract_address = deploy_ticket_verification_contract(
+        nft_class_hash, nft_contract, payment_token
+    );
+    let ticket_verification_contract = ITicketVerificationDispatcher {
+        contract_address: ticket_verification_contract_address
+    };
+    let token = IERC20Dispatcher { contract_address: payment_token };
+
+    // Create event
+    start_cheat_caller_address(ticket_verification_contract_address, OWNER());
+    let amount = 100_u256;
+    let event_id = ticket_verification_contract
+        .create_ticket_event(1687324800_u64, 'Concert Hall', true, amount, 1000_u256);
+    stop_cheat_caller_address(ticket_verification_contract_address);
+
+    // Setup buyer
+    let buyer: ContractAddress = 'buyer'.try_into().unwrap();
+    start_cheat_caller_address(payment_token, buyer);
+    token.mint(buyer, amount);
+    token.approve(ticket_verification_contract_address, amount);
+    stop_cheat_caller_address(payment_token);
+
+    // Mint ticket
+    start_cheat_caller_address(ticket_verification_contract_address, buyer);
+    let ticket_id = ticket_verification_contract.mint_ticket(event_id, buyer);
+    stop_cheat_caller_address(ticket_verification_contract_address);
+
+    // try to call is_ticket_used with a non existant id
+    let not_existant_ticket_id = ticket_id + 1;
+    ticket_verification_contract.is_ticket_used(not_existant_ticket_id);
+}
+
+#[test]
+fn test_get_event_details() {
+    // Setup
+    let payment_token = deploy_token_contract();
+    let (nft_contract, nft_class_hash) = deploy_eventnft_contract(0);
+    let ticket_verification_contract_address = deploy_ticket_verification_contract(
+        nft_class_hash, nft_contract, payment_token
+    );
+    let ticket_verification_contract = ITicketVerificationDispatcher {
+        contract_address: ticket_verification_contract_address
+    };
+
+    // Create an event
+    start_cheat_caller_address(ticket_verification_contract_address, OWNER());
+
+    let timestamp = 1687324800_u64;
+    let venue = 'Concert Hall';
+    let transferable = true;
+    let amount = 100_u256;
+    let ticket_num = 1000_u256;
+
+    let event_id = ticket_verification_contract
+        .create_ticket_event(timestamp, venue, transferable, amount, ticket_num);
+
+    stop_cheat_caller_address(ticket_verification_contract_address);
+    // Fetch event details
+    let event_details = ticket_verification_contract.get_event_details(event_id);
+    // Verify event details
+    assert(event_details.timestamp == timestamp, 'Wrong event timestamp');
+    assert(event_details.venue == venue, 'Wrong event venue');
+    assert(event_details.transferable == transferable, 'Wrong transferable flag');
+    assert(event_details.amount == amount, 'Wrong ticket amount');
+    assert(event_details.ticket_num == ticket_num, 'Wrong ticket count');
+}
+
+#[test]
+#[should_panic(expected: 'INVALID_EVENT_ID')]
+fn test_get_event_details_invalid_event_id() {
+    // Setup contracts
+    let payment_token = deploy_token_contract();
+    let (nft_contract, nft_class_hash) = deploy_eventnft_contract(0);
+    let ticket_verification_contract_address = deploy_ticket_verification_contract(
+        nft_class_hash, nft_contract, payment_token
+    );
+    let ticket_verification_contract = ITicketVerificationDispatcher {
+        contract_address: ticket_verification_contract_address
+    };
+
+    let invalid_event_id = 999_u256;
+
+    ticket_verification_contract.get_event_details(invalid_event_id);
+}
+
