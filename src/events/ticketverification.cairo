@@ -214,12 +214,12 @@ pub mod TicketVerification {
         }
 
         fn verify_ticket_event(ref self: ContractState, ticket_id: u256) -> bool {
-            let ticket = self.ticket_events.read(ticket_id);
             let ticket_used = self.ticket_used.read(ticket_id);
             let ticket_owner = self.ticket_owners.read(ticket_id);
             assert!(ticket_owner == get_caller_address(), "Callet not owner of the ticket");
-            assert!(ticket != 0, "No ticket fouind");
             assert!(!ticket_used, "Ticket already used");
+
+            let ticket = self.ticket_events.read(ticket_id);
             self.ticket_used.write(ticket_id, true);
             self
                 .emit(
