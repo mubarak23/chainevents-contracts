@@ -237,8 +237,8 @@ pub mod TicketVerification {
             let ticket_owner = self.ticket_owners.read(ticket_id);
             let ticket_event = self.ticket_events_details.read(ticket);
             assert!(ticket_owner == get_caller_address(), "Callet not owner of the ticket");
-            assert!(ticket != 0, "No ticket fouind");
-            assert!(!ticket_event.transferable, "Ticket not transferable");
+            assert!(ticket_event.transferable, "Ticket not transferable");
+
             self.ticket_owners.write(ticket_id, to);
             self
                 .emit(
