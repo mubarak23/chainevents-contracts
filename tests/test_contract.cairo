@@ -1960,7 +1960,9 @@ fn test_ticket_transfer() {
     ticket_verification_contract.transfer_ticket(ticket_id, USER_THREE.try_into().unwrap());
     stop_cheat_caller_address(ticket_verification_contract_address);
 
-    assert!(ticket_verification_contract.get_ticket_owner(ticket_id) == USER_THREE.try_into().unwrap());
+    assert!(
+        ticket_verification_contract.get_ticket_owner(ticket_id) == USER_THREE.try_into().unwrap()
+    );
 }
 
 
