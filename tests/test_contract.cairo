@@ -1966,7 +1966,7 @@ fn test_ticket_transfer() {
 
 #[test]
 #[should_panic(expected: "Callet not owner of the ticket")]
-fn test_ticket_transfer() {
+fn test_ticket_transfer_should_panic_if_not_owner() {
     // Setup
     let payment_token = deploy_token_contract();
     let (nft_contract, nft_class_hash) = deploy_eventnft_contract(0);
