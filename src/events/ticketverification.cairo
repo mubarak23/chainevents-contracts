@@ -212,7 +212,41 @@ pub mod TicketVerification {
             self.ticket_used.entry(ticket_id).write(true);
             false
         }
-        fn transfer_ticket(ref self: ContractState, ticket_id: u256, to: ContractAddress) {}
+
+        fn verify_ticket_event(ref self: ContractState, ticket_id: u256) -> bool {
+            let ticket_used = self.ticket_used.read(ticket_id);
+            let ticket_owner = self.ticket_owners.read(ticket_id);
+            assert!(ticket_owner == get_caller_address(), "Callet not owner of the ticket");
+            assert!(!ticket_used, "Ticket already used");
+
+            let ticket = self.ticket_events.read(ticket_id);
+            self.ticket_used.write(ticket_id, true);
+            self
+                .emit(
+                    Event::TicketUsed(
+                        TicketUsed {
+                            ticket_id: ticket_id, event_id: ticket, user: get_caller_address()
+                        }
+                    )
+                );
+            true
+        }
+
+        fn transfer_ticket(ref self: ContractState, ticket_id: u256, to: ContractAddress) {
+            let ticket = self.ticket_events.read(ticket_id);
+            let ticket_owner = self.ticket_owners.read(ticket_id);
+            let ticket_event = self.ticket_events_details.read(ticket);
+            assert!(ticket_owner == get_caller_address(), "Callet not owner of the ticket");
+            assert!(ticket_event.transferable, "Ticket not transferable");
+
+            self.ticket_owners.write(ticket_id, to);
+            self
+                .emit(
+                    Event::TicketTransferred(
+                        TicketTransferred { ticket_id: ticket_id, from: ticket_owner, to: to }
+                    )
+                );
+        }
 
         /// Read Functions
         fn get_ticket_owner(self: @ContractState, ticket_id: u256) -> ContractAddress {
