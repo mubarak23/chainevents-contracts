@@ -20,4 +20,6 @@ pub trait ITicketVerification<TContractState> {
     fn get_event_details(self: @TContractState, event_id: u256) -> TicketEvent;
     fn verify_ticket_event(ref self: TContractState, ticket_id: u256) -> bool;
     fn transfer_ticket(ref self: TContractState, ticket_id: u256, to: ContractAddress);
+
+    fn upgrade(ref self: TContractState, new_class_hash: ClassHash);
 }
