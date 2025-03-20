@@ -3,7 +3,6 @@
 /// @notice A contract for creating and managing events with registration and attendance tracking
 /// @dev Implements Ownable and Upgradeable components from OpenZeppelin
 pub mod TicketVerification {
-    use OwnableComponent::InternalTrait;
     use core::num::traits::zero::Zero;
     use chainevents_contracts::base::types::{EventDetails, EventRegistration, TicketEvent};
     use chainevents_contracts::base::errors::Errors::{
@@ -24,8 +23,16 @@ pub mod TicketVerification {
         IEventNFTDispatcher, IEventNFTDispatcherTrait
     };
     use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
-
+    use openzeppelin_upgrades::UpgradeableComponent;
     component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
+    component!(path: UpgradeableComponent, storage: upgradeable, event: UpgradeableEvent);
+
+    #[abi(embed_v0)]
+    impl OwnableImpl = OwnableComponent::OwnableImpl<ContractState>;
+
+    impl OwnableInternalImpl = OwnableComponent::InternalImpl<ContractState>;
+
+    impl UpgradeableInternalImpl = UpgradeableComponent::InternalImpl<ContractState>;
 
     /// @notice Contract storage structure
     /// @dev Contains mappings for event management and tracking
@@ -51,6 +58,8 @@ pub mod TicketVerification {
         ticket_event_nft_class_hash: ClassHash,
         #[substorage(v0)]
         ownable: OwnableComponent::Storage,
+        #[substorage(v0)]
+        upgradeable: UpgradeableComponent::Storage,
     }
 
     /// @notice Events emitted by the contract
@@ -63,6 +72,8 @@ pub mod TicketVerification {
         TicketEventCreated: TicketEventCreated,
         #[flat]
         OwnableEvent: OwnableComponent::Event,
+        #[flat]
+        UpgradeableEvent: UpgradeableComponent::Event,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -264,6 +275,20 @@ pub mod TicketVerification {
         fn get_event_details(self: @ContractState, event_id: u256) -> TicketEvent {
             assert(event_id <= self.ticket_event_counts.read(), 'INVALID_EVENT_ID');
             self.ticket_events_details.read(event_id)
+        }
+        fn upgrade(ref self: ContractState, new_class_hash: ClassHash) {
+            self._upgrade(new_class_hash)
+        }
+    }
+
+    #[generate_trait]
+    impl InternalImpl of InternalTrait {
+        /// @notice Upgrades the contract implementation
+        /// @param new_class_hash The new class hash to upgrade to
+        /// @dev Only callable by owner
+        fn _upgrade(ref self: ContractState, new_class_hash: ClassHash) {
+            self.ownable.assert_only_owner();
+            self.upgradeable.upgrade(new_class_hash);
         }
     }
 }
