@@ -178,42 +178,7 @@ pub mod TicketVerification {
         /// @param to The address that will receive the ticket
         /// @return ticket_id The ID of the newly minted ticket
         fn mint_ticket(ref self: ContractState, event_id: u256, to: ContractAddress) -> u256 {
-            // Get event details
-            let event = self.ticket_events_details.read(event_id);
-            assert(event.active, 'Event is not active');
-
-            // Get and increment next ticket ID
-            let ticket_id = self.next_ticket_id.read();
-            self.next_ticket_id.write(ticket_id + 1);
-
-            // Get payment token from event
-            let token = IERC20Dispatcher {
-                contract_address: self.payment_token_contract_address.read()
-            };
-
-            // Check allowance
-            let allowance = token.allowance(to, get_contract_address());
-            assert(allowance >= event.amount, 'Insufficient allowance');
-
-            // Check and process payment
-            let success = token.transfer_from(to, get_contract_address(), event.amount);
-            assert(success, 'Payment failed');
-
-            // Mint the ticket NFT
-            let nft = IEventNFTDispatcher {
-                contract_address: self.ticket_event_nft_contract_address.read(),
-            };
-            nft.mint_nft(to);
-
-            // Store ticket data
-            self.ticket_owners.write(ticket_id, to);
-            self.ticket_events.write(ticket_id, event_id);
-            self.ticket_used.write(ticket_id, false);
-
-            // Emit event
-            self.emit(TicketMinted { ticket_id: ticket_id, event_id: event_id, owner: to });
-
-            ticket_id
+            self._mint_ticket(event_id, to)
         }
 
         fn verify_ticket(ref self: ContractState, ticket_id: u256) -> bool {
@@ -289,6 +254,46 @@ pub mod TicketVerification {
         fn _upgrade(ref self: ContractState, new_class_hash: ClassHash) {
             self.ownable.assert_only_owner();
             self.upgradeable.upgrade(new_class_hash);
+        }
+
+        fn _mint_ticket(ref self: ContractState, event_id: u256, to: ContractAddress) -> u256 {
+            // Get event details
+            let event = self.ticket_events_details.read(event_id);
+            assert(event.active, 'Event is not active');
+
+            // Get and increment next ticket ID
+            let ticket_id = self.next_ticket_id.read();
+            self.next_ticket_id.write(ticket_id + 1);
+
+            // Get payment token from event
+            let token = IERC20Dispatcher {
+                contract_address: self.payment_token_contract_address.read()
+            };
+
+            // Check allowance
+            let allowance = token.allowance(to, get_contract_address());
+            assert(allowance >= event.amount, 'Insufficient allowance');
+
+            // Check and process payment
+            let owner = self.ownable.owner();
+            let success = token.transfer_from(to, owner, event.amount);
+            assert(success, 'Payment failed');
+
+            // Mint the ticket NFT
+            let nft = IEventNFTDispatcher {
+                contract_address: self.ticket_event_nft_contract_address.read(),
+            };
+            nft.mint_nft(to);
+
+            // Store ticket data
+            self.ticket_owners.write(ticket_id, to);
+            self.ticket_events.write(ticket_id, event_id);
+            self.ticket_used.write(ticket_id, false);
+
+            // Emit event
+            self.emit(TicketMinted { ticket_id: ticket_id, event_id: event_id, owner: to });
+
+            ticket_id
         }
     }
 }
