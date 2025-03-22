@@ -155,42 +155,7 @@ pub mod TicketVerification {
         /// @param to The address that will receive the ticket
         /// @return ticket_id The ID of the newly minted ticket
         fn mint_ticket(ref self: ContractState, event_id: u256, to: ContractAddress) -> u256 {
-            // Get event details
-            let event = self.ticket_events_details.read(event_id);
-            assert(event.active, 'Event is not active');
-
-            // Get and increment next ticket ID
-            let ticket_id = self.next_ticket_id.read();
-            self.next_ticket_id.write(ticket_id + 1);
-
-            // Get payment token from event
-            let token = IERC20Dispatcher {
-                contract_address: self.payment_token_contract_address.read()
-            };
-
-            // Check allowance
-            let allowance = token.allowance(to, get_contract_address());
-            assert(allowance >= event.amount, 'Insufficient allowance');
-
-            // Check and process payment
-            let success = token.transfer_from(to, get_contract_address(), event.amount);
-            assert(success, 'Payment failed');
-
-            // Mint the ticket NFT
-            let nft = IEventNFTDispatcher {
-                contract_address: self.ticket_event_nft_contract_address.read(),
-            };
-            nft.mint_nft(to);
-
-            // Store ticket data
-            self.ticket_owners.write(ticket_id, to);
-            self.ticket_events.write(ticket_id, event_id);
-            self.ticket_used.write(ticket_id, false);
-
-            // Emit event
-            self.emit(TicketMinted { ticket_id: ticket_id, event_id: event_id, owner: to });
-
-            ticket_id
+            self._mint_ticket(event_id, to)
         }
 
         fn verify_ticket(ref self: ContractState, ticket_id: u256) -> bool {
@@ -268,47 +233,44 @@ pub mod TicketVerification {
             self.upgradeable.upgrade(new_class_hash);
         }
 
-        /// @notice Internal implementation for creating a new ticket event
-        /// @param timestamp The scheduled time of the event
-        /// @param venue The location where the event will be held
-        /// @param transferable Whether tickets can be transferred between addresses
-        /// @param amount The cost per ticket in payment token
-        /// @param ticket_num The total number of tickets available
-        /// @return event_id The ID of the newly created ticket event
-        fn _create_ticket_event(
-            ref self: ContractState,
-            timestamp: u64,
-            venue: felt252,
-            transferable: bool,
-            amount: u256,
-            ticket_num: u256,
-        ) -> u256 {
-            // Get and increment next event ID
-            let event_id = self.next_event_id.read();
-            self.next_event_id.write(event_id + 1);
+        fn _mint_ticket(ref self: ContractState, event_id: u256, to: ContractAddress) -> u256 {
+            // Get event details
+            let event = self.ticket_events_details.read(event_id);
+            assert(event.active, 'Event is not active');
 
-            // Create new event
-            let event = TicketEvent {
-                timestamp: timestamp,
-                venue: venue,
-                transferable: transferable,
-                active: true,
-                amount: amount,
-                ticket_num: ticket_num,
+            // Get and increment next ticket ID
+            let ticket_id = self.next_ticket_id.read();
+            self.next_ticket_id.write(ticket_id + 1);
+
+            // Get payment token from event
+            let token = IERC20Dispatcher {
+                contract_address: self.payment_token_contract_address.read()
             };
 
-            // Store event
-            self.ticket_events_details.write(event_id, event);
+            // Check allowance
+            let allowance = token.allowance(to, get_contract_address());
+            assert(allowance >= event.amount, 'Insufficient allowance');
+
+            // Check and process payment
+            let owner = self.ownable.owner();
+            let success = token.transfer_from(to, owner, event.amount);
+            assert(success, 'Payment failed');
+
+            // Mint the ticket NFT
+            let nft = IEventNFTDispatcher {
+                contract_address: self.ticket_event_nft_contract_address.read(),
+            };
+            nft.mint_nft(to);
+
+            // Store ticket data
+            self.ticket_owners.write(ticket_id, to);
+            self.ticket_events.write(ticket_id, event_id);
+            self.ticket_used.write(ticket_id, false);
 
             // Emit event
-            self
-                .emit(
-                    TicketEventCreated {
-                        event_id: event_id, timestamp: timestamp, venue: venue, amount: amount,
-                    }
-                );
+            self.emit(TicketMinted { ticket_id: ticket_id, event_id: event_id, owner: to });
 
-            event_id
+            ticket_id
         }
     }
 }
