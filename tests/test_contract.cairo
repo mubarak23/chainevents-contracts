@@ -1429,8 +1429,9 @@ fn test_mint_ticket() {
     // Verify ticket minting
     assert(ticket_id == 0, 'Wrong ticket ID');
     assert(token.balance_of(buyer) == 0, 'Wrong buyer balance');
+    let event_owner: ContractAddress = OWNER();
     assert(
-        token.balance_of(ticket_verification_contract_address) == amount, 'Wrong contract balance'
+        token.balance_of(event_owner) == amount, 'Wrong contract balance'
     );
 
     // Verify event emission
