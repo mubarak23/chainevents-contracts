@@ -1430,9 +1430,7 @@ fn test_mint_ticket() {
     assert(ticket_id == 0, 'Wrong ticket ID');
     assert(token.balance_of(buyer) == 0, 'Wrong buyer balance');
     let event_owner: ContractAddress = OWNER();
-    assert(
-        token.balance_of(event_owner) == amount, 'Wrong contract balance'
-    );
+    assert(token.balance_of(event_owner) == amount, 'Wrong contract balance');
 
     // Verify event emission
     let expected_event = TicketVerification::Event::TicketMinted(
