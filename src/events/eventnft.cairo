@@ -98,5 +98,9 @@ pub mod EventNFT {
             self.erc721.burn(token_id);
             self.user_token_id.write(user_address, 0);
         }
+
+        fn get_token_mint_timestamp(self: @ContractState, token_id: u256) -> u64 {
+            self.mint_timestamp.read(token_id)
+        }
     }
 }
