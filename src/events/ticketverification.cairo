@@ -145,32 +145,8 @@ pub mod TicketVerification {
             // Only owner can create events
             self.ownable.assert_only_owner();
 
-            // Get and increment next event ID
-            let event_id = self.next_event_id.read();
-            self.next_event_id.write(event_id + 1);
-
-            // Create new event
-            let event = TicketEvent {
-                timestamp: timestamp,
-                venue: venue,
-                transferable: transferable,
-                active: true,
-                amount: amount,
-                ticket_num: ticket_num,
-            };
-
-            // Store event
-            self.ticket_events_details.write(event_id, event);
-
-            // Emit event
-            self
-                .emit(
-                    TicketEventCreated {
-                        event_id: event_id, timestamp: timestamp, venue: venue, amount: amount,
-                    }
-                );
-
-            event_id
+            // Create event using internal implementation
+            self._create_ticket_event(timestamp, venue, transferable, amount, ticket_num)
         }
 
         /// @notice Mints a new ticket for a specific event
@@ -294,6 +270,49 @@ pub mod TicketVerification {
             self.emit(TicketMinted { ticket_id: ticket_id, event_id: event_id, owner: to });
 
             ticket_id
+        }
+
+        /// @notice Internal implementation for creating a new ticket event
+        /// @param timestamp The scheduled time of the event
+        /// @param venue The location where the event will be held
+        /// @param transferable Whether tickets can be transferred between addresses
+        /// @param amount The cost per ticket in payment token
+        /// @param ticket_num The total number of tickets available
+        /// @return event_id The ID of the newly created ticket event
+        fn _create_ticket_event(
+            ref self: ContractState,
+            timestamp: u64,
+            venue: felt252,
+            transferable: bool,
+            amount: u256,
+            ticket_num: u256,
+        ) -> u256 {
+            // Get and increment next event ID
+            let event_id = self.next_event_id.read();
+            self.next_event_id.write(event_id + 1);
+
+            // Create new event
+            let event = TicketEvent {
+                timestamp: timestamp,
+                venue: venue,
+                transferable: transferable,
+                active: true,
+                amount: amount,
+                ticket_num: ticket_num,
+            };
+
+            // Store event
+            self.ticket_events_details.write(event_id, event);
+
+            // Emit event
+            self
+                .emit(
+                    TicketEventCreated {
+                        event_id: event_id, timestamp: timestamp, venue: venue, amount: amount,
+                    }
+                );
+
+            event_id
         }
     }
 }
