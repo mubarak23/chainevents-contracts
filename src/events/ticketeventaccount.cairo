@@ -1,7 +1,7 @@
 use starknet::ContractAddress;
 
 #[starknet::contract]
-mod TokengiverCampaigns {
+mod TicketEventAccount {
     // *************************************************************************
     //                            IMPORT
     // *************************************************************************
