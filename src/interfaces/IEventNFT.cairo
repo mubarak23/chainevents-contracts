@@ -7,5 +7,7 @@ pub trait IEventNFT<TContractState> {
     fn get_user_token_id(self: @TContractState, user_address: ContractAddress) -> u256;
     fn name(self: @TContractState) -> ByteArray;
     fn symbol(self: @TContractState) -> ByteArray;
+    fn get_token_mint_timestamp(self: @TContractState, token_id: u256) -> u64;
+    // fn upgrade(ref self: TState, new_class_hash: ClassHash);
     fn token_uri(self: @TContractState, token_id: u256) -> ByteArray;
 }

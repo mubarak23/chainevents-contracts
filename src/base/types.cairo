@@ -49,3 +49,12 @@ pub struct TicketEvent {
     pub ticket_num: u256,
 }
 
+#[derive(Drop, Serde, starknet::Store)]
+pub struct TicketEventAccount {
+    pub ticket_event_address: ContractAddress,
+    pub ticket_event_id: u256,
+    pub ticket_event_owner: ContractAddress,
+    pub nft_token_uri: ByteArray,
+    pub token_id: u256,
+}
+
