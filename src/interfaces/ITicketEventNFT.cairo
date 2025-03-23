@@ -9,5 +9,5 @@ pub trait ITicketEventNft<TState> {
     fn get_last_minted_id(self: @TState) -> u256;
     fn get_user_token_id(self: @TState, user: ContractAddress) -> u256;
     // fn get_token_mint_timestamp(self: @TState, token_id: u256) -> u64;
-    // fn get_token_uri(self: @TState, token_id: u256) -> ByteArray;
+// fn get_token_uri(self: @TState, token_id: u256) -> ByteArray;
 }

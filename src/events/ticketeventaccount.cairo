@@ -16,7 +16,7 @@ mod TicketEventAccount {
         ALREADY_RSVP, INVALID_EVENT, EVENT_CLOSED,
     };
     use chainevents_contracts::interfaces::ITicketEventAccount::ITicketEventAccount;
-    
+
     use chainevents_contracts::interfaces::ITicketEventNft::ITicketEventNft::{
         ITicketEventNftDispatcher, ITicketEventNftDispatcherTrait
     };
@@ -50,7 +50,9 @@ mod TicketEventAccount {
         ticket_event_account: Map<ContractAddress, TicketEventAccount>,
         ticket_event_accounts: Map<u16, ContractAddress>, // (ticket_event_id, account_address)
         count: u256,
-        ticket_event_account_nft_token: Map<ContractAddress, (ContractAddress, u256)>, // (recipient, (account_address, token_id))
+        ticket_event_account_nft_token: Map<
+            ContractAddress, (ContractAddress, u256)
+        >, // (recipient, (account_address, token_id))
         strk_address: ContractAddress,
         ticket_event_nft_contract_address: ContractAddress,
         ticket_event_nft_class_hash: ClassHash,
@@ -86,7 +88,7 @@ mod TicketEventAccount {
         block_timestamp: u64,
     }
 
- 
+
     // *************************************************************************
     //                              CONSTRUCTOR
     // *************************************************************************
@@ -123,7 +125,6 @@ mod TicketEventAccount {
             recipient: ContractAddress,
             ticket_event_id: u256,
         ) -> ContractAddress {
-
             // check if ticket_event_accounts has has an address  ticket_event_id
             let count: u16 = self.count.read() + 1;
             let ticket_event_nft_contract_address = self
@@ -140,7 +141,8 @@ mod TicketEventAccount {
 
             // get the token base on the user that nft was minted for
 
-            let token_id = ticket_event_nft_giver_dispatcher.get_user_token_id(get_caller_address());
+            let token_id = ticket_event_nft_giver_dispatcher
+                .get_user_token_id(get_caller_address());
 
             let ticket_event_account_address = IRegistryLibraryDispatcher {
                 class_hash: registry_hash.try_into().unwrap()
@@ -161,9 +163,10 @@ mod TicketEventAccount {
 
             self.ticket_event_account.write(ticket_event_account_address, new_ticket_event_account);
             self.ticket_event_accounts.write(ticket_event_id, ticket_event_account_address);
-            self.ticket_event_account_nft_token.write(recipient, (ticket_event_account_address, token_id));
+            self
+                .ticket_event_account_nft_token
+                .write(recipient, (ticket_event_account_address, token_id));
             self.count.write(count);
-
 
             self
                 .emit(
@@ -180,7 +183,6 @@ mod TicketEventAccount {
 
             ticket_event_account_address
         }
-     
 
 
         fn update_token_giver_nft(

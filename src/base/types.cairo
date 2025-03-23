@@ -58,4 +58,3 @@ pub struct TicketEventAccount {
     pub token_id: u256,
 }
 
-

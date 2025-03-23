@@ -3,7 +3,7 @@ pub mod TicketEventNft {
     // *************************************************************************
     //                             IMPORTS
     // *************************************************************************
-      use chainevents_contracts::base::types::{EventDetails, EventRegistration, EventType};
+    use chainevents_contracts::base::types::{EventDetails, EventRegistration, EventType};
     use chainevents_contracts::base::errors::Errors::{
         ZERO_ADDRESS_CALLER, NOT_OWNER, CLOSED_EVENT, ALREADY_REGISTERED, NOT_REGISTERED,
         ALREADY_RSVP, INVALID_EVENT, EVENT_CLOSED,
