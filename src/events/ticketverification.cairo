@@ -3,25 +3,26 @@
 /// @notice A contract for creating and managing events with registration and attendance tracking
 /// @dev Implements Ownable and Upgradeable components from OpenZeppelin
 pub mod TicketVerification {
-    use core::num::traits::zero::Zero;
-    use chainevents_contracts::base::types::{EventDetails, EventRegistration, TicketEvent};
     use chainevents_contracts::base::errors::Errors::{
-        ZERO_ADDRESS_CALLER, NOT_OWNER, CLOSED_EVENT, ALREADY_REGISTERED, NOT_REGISTERED,
-        ALREADY_RSVP, INVALID_EVENT, EVENT_NOT_CLOSED, EVENT_CLOSED, TRANSFER_FAILED,
-        NOT_A_PAID_EVENT, PAYMENT_TOKEN_NOT_SET,
+        ALREADY_REGISTERED, ALREADY_RSVP, CLOSED_EVENT, EVENT_CLOSED, EVENT_NOT_CLOSED,
+        INVALID_EVENT, NOT_A_PAID_EVENT, NOT_OWNER, NOT_REGISTERED, PAYMENT_TOKEN_NOT_SET,
+        TRANSFER_FAILED, ZERO_ADDRESS_CALLER,
     };
-
-    use chainevents_contracts::interfaces::ITicketVerification::ITicketVerification;
-    use core::starknet::{
-        ContractAddress, get_caller_address, syscalls::deploy_syscall, ClassHash,
-        get_block_timestamp, get_contract_address, contract_address_const,
-        storage::{Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePathEntry},
-    };
-
-    use openzeppelin::access::ownable::OwnableComponent;
+    use chainevents_contracts::base::types::{EventDetails, EventRegistration, TicketEvent};
     use chainevents_contracts::interfaces::IEventNFT::{
-        IEventNFTDispatcher, IEventNFTDispatcherTrait
+        IEventNFTDispatcher, IEventNFTDispatcherTrait,
     };
+    use chainevents_contracts::interfaces::ITicketVerification::ITicketVerification;
+    use core::num::traits::zero::Zero;
+    use core::starknet::storage::{
+        Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePathEntry,
+    };
+    use core::starknet::syscalls::deploy_syscall;
+    use core::starknet::{
+        ClassHash, ContractAddress, contract_address_const, get_block_timestamp, get_caller_address,
+        get_contract_address,
+    };
+    use openzeppelin::access::ownable::OwnableComponent;
     use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
     use openzeppelin_upgrades::UpgradeableComponent;
     component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
@@ -39,13 +40,13 @@ pub mod TicketVerification {
     #[storage]
     struct Storage {
         // Mapping from ticket ID to owner address
-        ticket_owners: Map::<u256, ContractAddress>,
+        ticket_owners: Map<u256, ContractAddress>,
         // Mapping from ticket ID to used status
-        ticket_used: Map::<u256, bool>,
+        ticket_used: Map<u256, bool>,
         // Mapping from ticket ID to event ID
-        ticket_events: Map::<u256, u256>,
+        ticket_events: Map<u256, u256>,
         // Mapping from event ID to event details (timestamp, venue)
-        ticket_events_details: Map::<u256, TicketEvent>,
+        ticket_events_details: Map<u256, TicketEvent>,
         // Contract owner
         owner: ContractAddress,
         // Counter for ticket IDs
@@ -80,21 +81,21 @@ pub mod TicketVerification {
     pub struct TicketMinted {
         pub ticket_id: u256,
         pub event_id: u256,
-        pub owner: ContractAddress
+        pub owner: ContractAddress,
     }
 
     #[derive(Drop, starknet::Event)]
     pub struct TicketUsed {
         pub ticket_id: u256,
         pub event_id: u256,
-        pub user: ContractAddress
+        pub user: ContractAddress,
     }
 
     #[derive(Drop, starknet::Event)]
     struct TicketTransferred {
         pub ticket_id: u256,
         pub from: ContractAddress,
-        pub to: ContractAddress
+        pub to: ContractAddress,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -165,23 +166,11 @@ pub mod TicketVerification {
             false
         }
 
+        /// @notice Verifies a ticket for an event and marks it as used
+        /// @param ticket_id The ID of the ticket to verify
+        /// @return bool True if verification succeeds
         fn verify_ticket_event(ref self: ContractState, ticket_id: u256) -> bool {
-            let ticket_used = self.ticket_used.read(ticket_id);
-            let ticket_owner = self.ticket_owners.read(ticket_id);
-            assert!(ticket_owner == get_caller_address(), "Callet not owner of the ticket");
-            assert!(!ticket_used, "Ticket already used");
-
-            let ticket = self.ticket_events.read(ticket_id);
-            self.ticket_used.write(ticket_id, true);
-            self
-                .emit(
-                    Event::TicketUsed(
-                        TicketUsed {
-                            ticket_id: ticket_id, event_id: ticket, user: get_caller_address()
-                        }
-                    )
-                );
-            true
+            self._verify_ticket_event(ticket_id)
         }
 
         fn transfer_ticket(ref self: ContractState, ticket_id: u256, to: ContractAddress) {
@@ -195,8 +184,8 @@ pub mod TicketVerification {
             self
                 .emit(
                     Event::TicketTransferred(
-                        TicketTransferred { ticket_id: ticket_id, from: ticket_owner, to: to }
-                    )
+                        TicketTransferred { ticket_id: ticket_id, from: ticket_owner, to: to },
+                    ),
                 );
         }
 
@@ -243,7 +232,7 @@ pub mod TicketVerification {
 
             // Get payment token from event
             let token = IERC20Dispatcher {
-                contract_address: self.payment_token_contract_address.read()
+                contract_address: self.payment_token_contract_address.read(),
             };
 
             // Check allowance
@@ -309,10 +298,31 @@ pub mod TicketVerification {
                 .emit(
                     TicketEventCreated {
                         event_id: event_id, timestamp: timestamp, venue: venue, amount: amount,
-                    }
+                    },
                 );
 
             event_id
+        }
+
+        /// @notice Verifies a ticket and marks it as used
+        /// @param ticket_id The ID of the ticket to verify
+        /// @return bool True if verification succeeds
+        fn _verify_ticket_event(ref self: ContractState, ticket_id: u256) -> bool {
+            let ticket_used = self.ticket_used.read(ticket_id);
+            let ticket_owner = self.ticket_owners.read(ticket_id);
+            assert!(ticket_owner == get_caller_address(), "Caller not owner of the ticket");
+            assert!(!ticket_used, "Ticket already used");
+            let event_id = self.ticket_events.read(ticket_id);
+            self.ticket_used.write(ticket_id, true);
+            self
+                .emit(
+                    Event::TicketUsed(
+                        TicketUsed {
+                            ticket_id: ticket_id, event_id: event_id, user: get_caller_address(),
+                        },
+                    ),
+                );
+            true
         }
     }
 }
