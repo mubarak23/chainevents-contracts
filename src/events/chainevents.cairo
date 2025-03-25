@@ -61,6 +61,8 @@ pub mod ChainEvents {
         paid_events_amount: Map<u256, u256>, // map<event_id, total_amount>
         paid_event_ticket_count: Map<u256, u256>, // map<event_id, count_number_of_ticket>
         event_payment_token: ContractAddress,
+        mint_timestamp: StorageMap<u256, u64>,
+        erc721: erc721::ERC721,
     }
 
     /// @notice Events emitted by the contract
@@ -158,6 +160,12 @@ pub mod ChainEvents {
         pub event_organizer: ContractAddress,
         pub amount: u256,
     }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct {
+
+    }
+
     /// @notice Initializes the Events contract
     /// @dev Sets the initial event count to 0
     #[constructor]
@@ -421,7 +429,20 @@ pub mod ChainEvents {
         fn fetch_all_unpaid_events(self: @ContractState) -> Array<EventDetails> {
             self._fetch_all_unpaid_events()
         }
+
+
+        fn get_token_mint_timestamp(self: @ContractState, token_id: u256) -> u64 {
+        match self.mint_timestamp.read(token_id) {
+            Some(timestamp) => timestamp,
+            None => panic!("Token ID not found"),
+        }
     }
+
+    fn get_token_uri(self: @ContractState, token_id: u256) -> ByteArray {
+        self.erc721.token_uri(token_id)
+    }
+
+}
 
     #[generate_trait]
     impl InternalImpl of InternalTrait {
