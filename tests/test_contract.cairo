@@ -2,27 +2,23 @@
 //                              Events TEST
 // *************************************************************************
 
-use core::result::ResultTrait;
-use core::traits::TryInto;
-use starknet::{ContractAddress, ClassHash};
-use core::starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
-
-use snforge_std::{
-    declare, start_cheat_caller_address, stop_cheat_caller_address, ContractClassTrait,
-    DeclareResultTrait, spy_events, EventSpyAssertionsTrait,
-};
-
-use openzeppelin::token::erc20::interface::{IERC20CamelDispatcher, IERC20CamelDispatcherTrait};
-
+use chainevents_contracts::base::types::{EventDetails, EventRegistration, EventType};
+use chainevents_contracts::events::chainevents::ChainEvents;
+use chainevents_contracts::events::ticketverification::TicketVerification;
 use chainevents_contracts::interfaces::IEvent::{IEventDispatcher, IEventDispatcherTrait};
-use chainevents_contracts::events::{
-    chainevents::ChainEvents, ticketverification::TicketVerification
-};
-use chainevents_contracts::base::types::{EventDetails, EventType, EventRegistration};
 use chainevents_contracts::interfaces::IPaymentToken::{IERC20Dispatcher, IERC20DispatcherTrait};
 use chainevents_contracts::interfaces::ITicketVerification::{
-    ITicketVerificationDispatcher, ITicketVerificationDispatcherTrait
+    ITicketVerificationDispatcher, ITicketVerificationDispatcherTrait,
 };
+use core::result::ResultTrait;
+use core::starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
+use core::traits::TryInto;
+use openzeppelin::token::erc20::interface::{IERC20CamelDispatcher, IERC20CamelDispatcherTrait};
+use snforge_std::{
+    ContractClassTrait, DeclareResultTrait, EventSpyAssertionsTrait, declare, spy_events,
+    start_cheat_caller_address, stop_cheat_caller_address,
+};
+use starknet::{ClassHash, ContractAddress};
 
 const USER_ONE: felt252 = 'JOE';
 const USER_TWO: felt252 = 'DOE';
@@ -71,7 +67,7 @@ fn deploy_eventnft_contract(event_id: u256) -> (ContractAddress, ClassHash) {
 fn deploy_ticket_verification_contract(
     ticket_event_nft_class_hash: ClassHash,
     ticket_event_nft_contract_address: ContractAddress,
-    payment_token_contract_address: ContractAddress
+    payment_token_contract_address: ContractAddress,
 ) -> ContractAddress {
     let contract = declare("TicketVerification").unwrap().contract_class();
     let mut constructor_calldata: Array<felt252> = array![];
@@ -553,11 +549,11 @@ fn test_open_event_emission() {
                         ChainEvents::OpenEventRegistration {
                             event_id,
                             event_name: event_details.name,
-                            event_owner: USER_ONE.try_into().unwrap()
-                        }
-                    )
-                )
-            ]
+                            event_owner: USER_ONE.try_into().unwrap(),
+                        },
+                    ),
+                ),
+            ],
         );
 
     stop_cheat_caller_address(event_contract_address);
@@ -1304,7 +1300,7 @@ fn test_withdraw_paid_event_amount_for_closed_event() {
     stop_cheat_caller_address(event_contract_address);
 
     let expected_event = ChainEvents::Event::WithdrawalMade(
-        ChainEvents::WithdrawalMade { event_id, event_organizer: user_one, amount: event_fee }
+        ChainEvents::WithdrawalMade { event_id, event_organizer: user_one, amount: event_fee },
     );
     spy.assert_emitted(@array![(event_contract_address, expected_event)]);
 
@@ -1325,12 +1321,12 @@ fn test_constructor() {
     let payment_token = deploy_token_contract();
     let (nft_contract, nft_class_hash) = deploy_eventnft_contract(0);
     let ticket_verification_contract_address = deploy_ticket_verification_contract(
-        nft_class_hash, nft_contract, payment_token
+        nft_class_hash, nft_contract, payment_token,
     );
 
     // Deploy dispatcher
     let ticket_verification_contract = ITicketVerificationDispatcher {
-        contract_address: ticket_verification_contract_address
+        contract_address: ticket_verification_contract_address,
     };
     // TODO: Make assertions on contract state
 }
@@ -1341,10 +1337,10 @@ fn test_create_ticket_event() {
     let payment_token = deploy_token_contract();
     let (nft_contract, nft_class_hash) = deploy_eventnft_contract(0);
     let ticket_verification_contract_address = deploy_ticket_verification_contract(
-        nft_class_hash, nft_contract, payment_token
+        nft_class_hash, nft_contract, payment_token,
     );
     let ticket_verification_contract = ITicketVerificationDispatcher {
-        contract_address: ticket_verification_contract_address
+        contract_address: ticket_verification_contract_address,
     };
 
     // Test event creation
@@ -1366,7 +1362,7 @@ fn test_create_ticket_event() {
 
     // Verify event emission
     let expected_event = TicketVerification::Event::TicketEventCreated(
-        TicketVerification::TicketEventCreated { event_id, timestamp, venue, amount }
+        TicketVerification::TicketEventCreated { event_id, timestamp, venue, amount },
     );
     spy.assert_emitted(@array![(ticket_verification_contract_address, expected_event)]);
 
@@ -1380,10 +1376,10 @@ fn test_create_ticket_event_not_owner() {
     let payment_token = deploy_token_contract();
     let (nft_contract, nft_class_hash) = deploy_eventnft_contract(0);
     let ticket_verification_contract_address = deploy_ticket_verification_contract(
-        nft_class_hash, nft_contract, payment_token
+        nft_class_hash, nft_contract, payment_token,
     );
     let ticket_verification_contract = ITicketVerificationDispatcher {
-        contract_address: ticket_verification_contract_address
+        contract_address: ticket_verification_contract_address,
     };
 
     let non_owner: ContractAddress = 'non_owner'.try_into().unwrap();
@@ -1399,10 +1395,10 @@ fn test_mint_ticket() {
     let payment_token = deploy_token_contract();
     let (nft_contract, nft_class_hash) = deploy_eventnft_contract(0);
     let ticket_verification_contract_address = deploy_ticket_verification_contract(
-        nft_class_hash, nft_contract, payment_token
+        nft_class_hash, nft_contract, payment_token,
     );
     let ticket_verification_contract = ITicketVerificationDispatcher {
-        contract_address: ticket_verification_contract_address
+        contract_address: ticket_verification_contract_address,
     };
     let token = IERC20Dispatcher { contract_address: payment_token };
 
@@ -1434,7 +1430,7 @@ fn test_mint_ticket() {
 
     // Verify event emission
     let expected_event = TicketVerification::Event::TicketMinted(
-        TicketVerification::TicketMinted { ticket_id, event_id, owner: buyer }
+        TicketVerification::TicketMinted { ticket_id, event_id, owner: buyer },
     );
     spy.assert_emitted(@array![(ticket_verification_contract_address, expected_event)]);
 
@@ -1448,10 +1444,10 @@ fn test_mint_ticket_inactive_event() {
     let payment_token = deploy_token_contract();
     let (nft_contract, nft_class_hash) = deploy_eventnft_contract(0);
     let ticket_verification_contract_address = deploy_ticket_verification_contract(
-        nft_class_hash, nft_contract, payment_token
+        nft_class_hash, nft_contract, payment_token,
     );
     let ticket_verification_contract = ITicketVerificationDispatcher {
-        contract_address: ticket_verification_contract_address
+        contract_address: ticket_verification_contract_address,
     };
     let token = IERC20Dispatcher { contract_address: payment_token };
 
@@ -1468,10 +1464,10 @@ fn test_mint_ticket_insufficient_allowance() {
     let payment_token = deploy_token_contract();
     let (nft_contract, nft_class_hash) = deploy_eventnft_contract(0);
     let ticket_verification_contract_address = deploy_ticket_verification_contract(
-        nft_class_hash, nft_contract, payment_token
+        nft_class_hash, nft_contract, payment_token,
     );
     let ticket_verification_contract = ITicketVerificationDispatcher {
-        contract_address: ticket_verification_contract_address
+        contract_address: ticket_verification_contract_address,
     };
     let token = IERC20Dispatcher { contract_address: payment_token };
 
@@ -1500,10 +1496,10 @@ fn test_get_ticket_owner() {
     let payment_token = deploy_token_contract();
     let (nft_contract, nft_class_hash) = deploy_eventnft_contract(0);
     let ticket_verification_contract_address = deploy_ticket_verification_contract(
-        nft_class_hash, nft_contract, payment_token
+        nft_class_hash, nft_contract, payment_token,
     );
     let ticket_verification_contract = ITicketVerificationDispatcher {
-        contract_address: ticket_verification_contract_address
+        contract_address: ticket_verification_contract_address,
     };
     let token = IERC20Dispatcher { contract_address: payment_token };
 
@@ -1540,10 +1536,10 @@ fn test_get_ticket_owner_ticket_not_exist() {
     let payment_token = deploy_token_contract();
     let (nft_contract, nft_class_hash) = deploy_eventnft_contract(0);
     let ticket_verification_contract_address = deploy_ticket_verification_contract(
-        nft_class_hash, nft_contract, payment_token
+        nft_class_hash, nft_contract, payment_token,
     );
     let ticket_verification_contract = ITicketVerificationDispatcher {
-        contract_address: ticket_verification_contract_address
+        contract_address: ticket_verification_contract_address,
     };
     let token = IERC20Dispatcher { contract_address: payment_token };
 
@@ -1578,10 +1574,10 @@ fn test_is_ticket_used_false() {
     let payment_token = deploy_token_contract();
     let (nft_contract, nft_class_hash) = deploy_eventnft_contract(0);
     let ticket_verification_contract_address = deploy_ticket_verification_contract(
-        nft_class_hash, nft_contract, payment_token
+        nft_class_hash, nft_contract, payment_token,
     );
     let ticket_verification_contract = ITicketVerificationDispatcher {
-        contract_address: ticket_verification_contract_address
+        contract_address: ticket_verification_contract_address,
     };
     let token = IERC20Dispatcher { contract_address: payment_token };
 
@@ -1617,10 +1613,10 @@ fn test_is_ticket_used_true() {
     let payment_token = deploy_token_contract();
     let (nft_contract, nft_class_hash) = deploy_eventnft_contract(0);
     let ticket_verification_contract_address = deploy_ticket_verification_contract(
-        nft_class_hash, nft_contract, payment_token
+        nft_class_hash, nft_contract, payment_token,
     );
     let ticket_verification_contract = ITicketVerificationDispatcher {
-        contract_address: ticket_verification_contract_address
+        contract_address: ticket_verification_contract_address,
     };
     let token = IERC20Dispatcher { contract_address: payment_token };
 
@@ -1662,10 +1658,10 @@ fn test_is_ticket_used_not_exist() {
     let payment_token = deploy_token_contract();
     let (nft_contract, nft_class_hash) = deploy_eventnft_contract(0);
     let ticket_verification_contract_address = deploy_ticket_verification_contract(
-        nft_class_hash, nft_contract, payment_token
+        nft_class_hash, nft_contract, payment_token,
     );
     let ticket_verification_contract = ITicketVerificationDispatcher {
-        contract_address: ticket_verification_contract_address
+        contract_address: ticket_verification_contract_address,
     };
     let token = IERC20Dispatcher { contract_address: payment_token };
 
@@ -1699,10 +1695,10 @@ fn test_get_event_details() {
     let payment_token = deploy_token_contract();
     let (nft_contract, nft_class_hash) = deploy_eventnft_contract(0);
     let ticket_verification_contract_address = deploy_ticket_verification_contract(
-        nft_class_hash, nft_contract, payment_token
+        nft_class_hash, nft_contract, payment_token,
     );
     let ticket_verification_contract = ITicketVerificationDispatcher {
-        contract_address: ticket_verification_contract_address
+        contract_address: ticket_verification_contract_address,
     };
 
     // Create an event
@@ -1735,10 +1731,10 @@ fn test_get_event_details_invalid_event_id() {
     let payment_token = deploy_token_contract();
     let (nft_contract, nft_class_hash) = deploy_eventnft_contract(0);
     let ticket_verification_contract_address = deploy_ticket_verification_contract(
-        nft_class_hash, nft_contract, payment_token
+        nft_class_hash, nft_contract, payment_token,
     );
     let ticket_verification_contract = ITicketVerificationDispatcher {
-        contract_address: ticket_verification_contract_address
+        contract_address: ticket_verification_contract_address,
     };
 
     let invalid_event_id = 999_u256;
@@ -1753,10 +1749,10 @@ fn test_ticket_mint() {
     let payment_token = deploy_token_contract();
     let (nft_contract, nft_class_hash) = deploy_eventnft_contract(0);
     let ticket_verification_contract_address = deploy_ticket_verification_contract(
-        nft_class_hash, nft_contract, payment_token
+        nft_class_hash, nft_contract, payment_token,
     );
     let ticket_verification_contract = ITicketVerificationDispatcher {
-        contract_address: ticket_verification_contract_address
+        contract_address: ticket_verification_contract_address,
     };
     let mut spy = spy_events();
     let token = IERC20Dispatcher { contract_address: payment_token };
@@ -1784,7 +1780,7 @@ fn test_ticket_mint() {
     ticket_verification_contract.verify_ticket_event(event_id);
     stop_cheat_caller_address(ticket_verification_contract_address);
     let expected_event = TicketVerification::Event::TicketUsed(
-        TicketVerification::TicketUsed { ticket_id: ticket_id, event_id: event_id, user: buyer }
+        TicketVerification::TicketUsed { ticket_id: ticket_id, event_id: event_id, user: buyer },
     );
     spy.assert_emitted(@array![(ticket_verification_contract_address, expected_event)]);
 
@@ -1801,10 +1797,10 @@ fn test_ticket_mint_event_emitted() {
     let payment_token = deploy_token_contract();
     let (nft_contract, nft_class_hash) = deploy_eventnft_contract(0);
     let ticket_verification_contract_address = deploy_ticket_verification_contract(
-        nft_class_hash, nft_contract, payment_token
+        nft_class_hash, nft_contract, payment_token,
     );
     let ticket_verification_contract = ITicketVerificationDispatcher {
-        contract_address: ticket_verification_contract_address
+        contract_address: ticket_verification_contract_address,
     };
     let token = IERC20Dispatcher { contract_address: payment_token };
 
@@ -1840,16 +1836,16 @@ fn test_ticket_mint_event_emitted() {
 
 
 #[test]
-#[should_panic(expected: "Callet not owner of the ticket")]
+#[should_panic(expected: "Caller not owner of the ticket")]
 fn test_ticket_mint_should_panic_if_not_owner() {
     // Setup
     let payment_token = deploy_token_contract();
     let (nft_contract, nft_class_hash) = deploy_eventnft_contract(0);
     let ticket_verification_contract_address = deploy_ticket_verification_contract(
-        nft_class_hash, nft_contract, payment_token
+        nft_class_hash, nft_contract, payment_token,
     );
     let ticket_verification_contract = ITicketVerificationDispatcher {
-        contract_address: ticket_verification_contract_address
+        contract_address: ticket_verification_contract_address,
     };
     let token = IERC20Dispatcher { contract_address: payment_token };
 
@@ -1873,9 +1869,9 @@ fn test_ticket_mint_should_panic_if_not_owner() {
     stop_cheat_caller_address(ticket_verification_contract_address);
 
     start_cheat_caller_address(
-        ticket_verification_contract_address, USER_THREE.try_into().unwrap()
+        ticket_verification_contract_address, USER_THREE.try_into().unwrap(),
     );
-    ticket_verification_contract.verify_ticket_event(event_id);
+    ticket_verification_contract.verify_ticket_event(ticket_id);
     stop_cheat_caller_address(ticket_verification_contract_address);
 }
 
@@ -1887,10 +1883,10 @@ fn test_ticket_mint_should_panic_if_ticket_already_used() {
     let payment_token = deploy_token_contract();
     let (nft_contract, nft_class_hash) = deploy_eventnft_contract(0);
     let ticket_verification_contract_address = deploy_ticket_verification_contract(
-        nft_class_hash, nft_contract, payment_token
+        nft_class_hash, nft_contract, payment_token,
     );
     let ticket_verification_contract = ITicketVerificationDispatcher {
-        contract_address: ticket_verification_contract_address
+        contract_address: ticket_verification_contract_address,
     };
     let token = IERC20Dispatcher { contract_address: payment_token };
 
@@ -1929,10 +1925,10 @@ fn test_ticket_transfer() {
     let payment_token = deploy_token_contract();
     let (nft_contract, nft_class_hash) = deploy_eventnft_contract(0);
     let ticket_verification_contract_address = deploy_ticket_verification_contract(
-        nft_class_hash, nft_contract, payment_token
+        nft_class_hash, nft_contract, payment_token,
     );
     let ticket_verification_contract = ITicketVerificationDispatcher {
-        contract_address: ticket_verification_contract_address
+        contract_address: ticket_verification_contract_address,
     };
     let token = IERC20Dispatcher { contract_address: payment_token };
 
@@ -1960,22 +1956,22 @@ fn test_ticket_transfer() {
     stop_cheat_caller_address(ticket_verification_contract_address);
 
     assert!(
-        ticket_verification_contract.get_ticket_owner(ticket_id) == USER_THREE.try_into().unwrap()
+        ticket_verification_contract.get_ticket_owner(ticket_id) == USER_THREE.try_into().unwrap(),
     );
 }
 
 
 #[test]
-#[should_panic(expected: "Callet not owner of the ticket")]
+#[should_panic(expected: "Caller not owner of the ticket")]
 fn test_ticket_transfer_should_panic_if_not_owner() {
     // Setup
     let payment_token = deploy_token_contract();
     let (nft_contract, nft_class_hash) = deploy_eventnft_contract(0);
     let ticket_verification_contract_address = deploy_ticket_verification_contract(
-        nft_class_hash, nft_contract, payment_token
+        nft_class_hash, nft_contract, payment_token,
     );
     let ticket_verification_contract = ITicketVerificationDispatcher {
-        contract_address: ticket_verification_contract_address
+        contract_address: ticket_verification_contract_address,
     };
     let token = IERC20Dispatcher { contract_address: payment_token };
 
