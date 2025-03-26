@@ -97,7 +97,7 @@ pub mod TicketEventNft {
 
 
     #[abi(embed_v0)]
-    impl TokenGiverImpl of ITokenGiverNft::ITokenGiverNft<ContractState> {
+    impl TicketEventNftimpl of ITicketEventNft<ContractState> {
         // *************************************************************************
         //                            EXTERNAL
         // *************************************************************************
@@ -128,6 +128,14 @@ pub mod TicketEventNft {
             // This function can only be called by the owner
             self.ownable.assert_only_owner();
             self.upgradeable.upgrade(new_class_hash);
+        }
+
+        fn get_token_mint_timestamp(self: @ContractState, token_id: u256) -> u64 {
+            self.mint_timestamp.read(token_id)
+        }
+
+        fn get_token_uri(self: @ContractState, token_id: u256) -> ByteArray {
+            self.erc721.token_uri(token_id)
         }
     }
 }
