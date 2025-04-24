@@ -38,3 +38,12 @@ pub enum EventType {
     Free,
     Paid
 }
+
+// Struct for storing group data
+#[derive(Debug, Drop, Serde, starknet::Store, Clone, PartialEq)]
+pub struct Group {
+    creator: ContractAddress,
+    max_members: u32,
+    contribution_amount: u128,
+    duration_in_days: u32,
+}
