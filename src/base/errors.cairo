@@ -13,4 +13,15 @@ pub mod Errors {
     pub const NOT_TOKEN_OWNER: felt252 = 'Not Token Owner';
     pub const TOKEN_DOES_NOT_EXIST: felt252 = 'Token Does Not Exist';
     pub const EVENT_NOT_PAID: felt252 = 'Event is not paid';
+
+    pub const GROUP_ID_EXISTS: felt252 = 'Group ID Already In Use';
+    pub const INVALID_MAX_MEMBERS: felt252 = 'Maximum Member Must Be > 0';
+    pub const INVALID_CONTRIBUTION: felt252 = 'Contribution Amount Must Be > 0';
+    pub const INVALID_DURATION: felt252 = 'Duration Must Be > 0';
+    pub const PAYOUT_ORDER_MISMATCH: felt252 = 'Payout Order Mismatch';
+    pub const DUPLICATE_ADDRESS: felt252 = 'Duplicate Address Detected';
+    pub const GROUP_NOT_FOUND: felt252 = 'Group Not Found';
+    pub const GROUP_NOT_ACCEPTING_MEMBERS: felt252 = 'Group Not Accepting Members';
+    pub const MEMBER_ALREADY_IN_GROUP: felt252 = 'Member Already In Group';
+    pub const GROUP_FULL: felt252 = 'Group Is Full';
 }

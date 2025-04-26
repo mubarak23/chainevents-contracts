@@ -26,7 +26,7 @@ pub struct EventRegistration {
     pub has_rsvp: bool,
     pub nft_contract_address: ContractAddress,
     pub nft_token_id: u256,
-    pub organizer: ContractAddress
+    pub organizer: ContractAddress,
 }
 
 
@@ -36,14 +36,16 @@ pub struct EventRegistration {
 #[derive(Debug, Drop, Serde, starknet::Store, Clone, PartialEq)]
 pub enum EventType {
     Free,
-    Paid
+    Paid,
 }
 
-// Struct for storing group data
-#[derive(Debug, Drop, Serde, starknet::Store, Clone, PartialEq)]
+/// @title Group Structure
+/// @notice Contains comprehensive information about a group
+/// @dev Used to store and manage group-specific data
+#[derive(Drop, Copy, Serde, starknet::Store, Clone, PartialEq)]
 pub struct Group {
-    creator: ContractAddress,
-    max_members: u32,
-    contribution_amount: u128,
-    duration_in_days: u32,
+    pub creator: ContractAddress,
+    pub max_members: u32,
+    pub contribution_amount: u128,
+    pub duration_in_days: u32,
 }
