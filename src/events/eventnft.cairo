@@ -1,18 +1,17 @@
 #[starknet::contract]
 pub mod EventNFT {
-    use starknet::{ContractAddress, get_block_timestamp};
-    use core::num::traits::zero::Zero;
-    use openzeppelin::introspection::src5::SRC5Component;
-    use openzeppelin::token::erc721::{ERC721Component, ERC721HooksEmptyImpl};
-
-    use starknet::storage::{
-        Map, StoragePointerWriteAccess, StoragePointerReadAccess, StorageMapReadAccess,
-        StorageMapWriteAccess,
-    };
-    use chainevents_contracts::interfaces::IEventNFT::IEventNFT;
     use chainevents_contracts::base::errors::Errors::{
         ALREADY_MINTED, NOT_TOKEN_OWNER, TOKEN_DOES_NOT_EXIST,
     };
+    use chainevents_contracts::interfaces::IEventNFT::IEventNFT;
+    use core::num::traits::zero::Zero;
+    use openzeppelin::introspection::src5::SRC5Component;
+    use openzeppelin::token::erc721::{ERC721Component, ERC721HooksEmptyImpl};
+    use starknet::storage::{
+        Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess,
+        StoragePointerWriteAccess,
+    };
+    use starknet::{ContractAddress, get_block_timestamp};
 
     // *************************************************************************
     //                             COMPONENTS

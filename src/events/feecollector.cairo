@@ -3,17 +3,15 @@
 /// @notice A contract for fee base on paid events and number of user that purchase the ticket.
 /// @dev Implements Ownable and Upgradeable components from OpenZeppelin
 pub mod FeeCollector {
-    use chainevents_contracts::base::types::{EventDetails, EventType};
     use chainevents_contracts::base::errors::Errors::{EVENT_CLOSED, EVENT_NOT_PAID};
-    use chainevents_contracts::interfaces::IFeeCollector::IFeeCollector;
+    use chainevents_contracts::base::types::{EventDetails, EventType};
     use chainevents_contracts::interfaces::IEvent::{IEventDispatcher, IEventDispatcherTrait};
-    use core::starknet::{
-        ContractAddress, get_caller_address, ClassHash, get_contract_address,
-        storage::{Map, StorageMapReadAccess, StorageMapWriteAccess},
-    };
+    use chainevents_contracts::interfaces::IFeeCollector::IFeeCollector;
+    use core::starknet::storage::{Map, StorageMapReadAccess, StorageMapWriteAccess};
+    use core::starknet::{ClassHash, ContractAddress, get_caller_address, get_contract_address};
     use openzeppelin::access::ownable::OwnableComponent;
-    use openzeppelin::upgrades::UpgradeableComponent;
     use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use openzeppelin::upgrades::UpgradeableComponent;
 
     component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
     component!(path: UpgradeableComponent, storage: upgradeable, event: UpgradeableEvent);

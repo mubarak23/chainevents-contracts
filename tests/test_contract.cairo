@@ -2,24 +2,21 @@
 //                              Events TEST
 // *************************************************************************
 
-use core::result::ResultTrait;
-use core::traits::TryInto;
-use starknet::{ContractAddress};
-
-use snforge_std::{
-    declare, start_cheat_caller_address, stop_cheat_caller_address, ContractClassTrait,
-    DeclareResultTrait, spy_events, EventSpyAssertionsTrait,
-};
-
-use openzeppelin::token::erc20::interface::{IERC20CamelDispatcher, IERC20CamelDispatcherTrait};
-
-use chainevents_contracts::interfaces::IEvent::{IEventDispatcher, IEventDispatcherTrait};
-use chainevents_contracts::events::chainevents::ChainEvents;
 use chainevents_contracts::base::types::EventType;
+use chainevents_contracts::events::chainevents::ChainEvents;
+use chainevents_contracts::events::feecollector::FeeCollector;
+use chainevents_contracts::interfaces::IEvent::{IEventDispatcher, IEventDispatcherTrait};
 use chainevents_contracts::interfaces::IFeeCollector::{
     IFeeCollectorDispatcher, IFeeCollectorDispatcherTrait,
 };
-use chainevents_contracts::events::feecollector::FeeCollector;
+use core::result::ResultTrait;
+use core::traits::TryInto;
+use openzeppelin::token::erc20::interface::{IERC20CamelDispatcher, IERC20CamelDispatcherTrait};
+use snforge_std::{
+    ContractClassTrait, DeclareResultTrait, EventSpyAssertionsTrait, declare, spy_events,
+    start_cheat_caller_address, stop_cheat_caller_address,
+};
+use starknet::ContractAddress;
 
 const USER_ONE: felt252 = 'JOE';
 const USER_TWO: felt252 = 'DOE';

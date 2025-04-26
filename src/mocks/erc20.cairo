@@ -1,7 +1,7 @@
 #[starknet::contract]
 pub mod MyToken {
     use openzeppelin_token::erc20::{ERC20Component, ERC20HooksEmptyImpl};
-    use starknet::{ContractAddress};
+    use starknet::ContractAddress;
     const FAUCET_AMOUNT: u256 = 1_000_000; // 1E6 * 1E18
     component!(path: ERC20Component, storage: erc20, event: ERC20Event);
 
