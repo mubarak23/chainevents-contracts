@@ -7,7 +7,7 @@ use core::felt252;
 use core::traits::Into;
 use snforge_std::{
     ContractClassTrait, DeclareResultTrait, declare, start_cheat_caller_address,
-    stop_cheat_caller_address,
+    stop_cheat_caller_address, store,
 };
 use starknet::{
     ClassHash, ContractAddress, get_block_timestamp, get_caller_address, get_contract_address,
@@ -146,13 +146,13 @@ fn test_get_current_round_active_group() {
     // Create group
     contract.create_group(group_id, creator, max_members, 100, 30, payout_order);
 
-    // Simulate starting cycle (set round to 1)
-    store(
-        contract.contract_address,
-        selector!("group_current_round"),
-        array![1].span(),
-        array![group_id].span(),
-    );
+    // Add all members to make the group full
+    contract.join_group(group_id, member1);
+    contract.join_group(group_id, member2);
+    contract.join_group(group_id, member3);
+
+    // Start the cycle
+    contract.start_cycle(group_id);
 
     // Test
     let round = contract.get_current_round(group_id);

@@ -68,7 +68,7 @@ mod GroupSaving {
         // Maps group_id to the next index (u32) in the payout order.
         // Tracks the current position in the payout sequence.
         group_next_payout_index: Map<felt252, u32>,
-        // Maps (group_id, index) to a member’s ContractAddress.
+        // Maps (group_id, index) to a member's ContractAddress.
         // Stores the ordered list of group members, used by get_group_members to reconstruct the
         // member list.
         group_members_list: Map<(felt252, u32), ContractAddress>,
@@ -81,7 +81,7 @@ mod GroupSaving {
         // Maps group_id to the number of members (u32) in the group.
         // Used by get_group_members and join_group to manage the member list.
         group_member_counts: Map<felt252, u32>,
-        // Maps a user’s ContractAddress to a group_id they created.
+        // Maps a user's ContractAddress to a group_id they created.
         user_groups: Map<ContractAddress, felt252>,
     }
 
@@ -194,9 +194,52 @@ mod GroupSaving {
             ref self: ContractState, group_id: felt252, member: ContractAddress, amount: u128,
         ) {}
 
-        fn start_cycle(ref self: ContractState, group_id: felt252) {}
+        fn start_cycle(ref self: ContractState, group_id: felt252) {
+            // Validate group exists
+            assert(self.group_ids.read(group_id), 'Group Not Found');
 
-        fn join_group(ref self: ContractState, group_id: felt252, member: ContractAddress) {}
+            // Validate group is full
+            assert(self.group_is_full.read(group_id), 'Group Is Not Full');
+
+            // Validate group is not already active
+            assert(!self.group_is_active.read(group_id), 'Group Is Already Active');
+
+            // Set group as active
+            self.group_is_active.write(group_id, true);
+
+            // Set current round to 1
+            self.group_current_round.write(group_id, 1);
+        }
+
+        fn join_group(ref self: ContractState, group_id: felt252, member: ContractAddress) {
+            // Validate group exists
+            assert(self.group_ids.read(group_id), GROUP_NOT_FOUND);
+
+            // Validate group is not full
+            assert(!self.group_is_full.read(group_id), GROUP_FULL);
+
+            // Validate group is accepting members
+            assert(!self.group_is_active.read(group_id), GROUP_NOT_ACCEPTING_MEMBERS);
+
+            // Validate member is not already in the group
+            let member_count = self.group_member_counts.read(group_id);
+            for i in 0..member_count {
+                let existing_member = self.group_members_list.read((group_id, i));
+                assert(existing_member != member, MEMBER_ALREADY_IN_GROUP);
+            }
+
+            // Add member to the group
+            self.group_members_list.write((group_id, member_count), member);
+
+            // Update member count
+            self.group_member_counts.write(group_id, member_count + 1);
+
+            // Check if group is now full
+            let group = self.groups.read(group_id);
+            if member_count + 1 == group.max_members {
+                self.group_is_full.write(group_id, true);
+            }
+        }
 
         fn total_fees_collected(self: @ContractState) -> u256 {
             0
