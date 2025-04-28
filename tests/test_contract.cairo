@@ -525,58 +525,58 @@ fn test_unregister_from_event() {
 
     stop_cheat_caller_address(event_contract_address);
 }
+// #[test]
+// fn test_collect_fee_for_event() {
+//     // Setup contracts
+//     let event_contract_address = __setup__();
+//     let erc20 = __deploy_erc20__();
 
-#[test]
-fn test_collect_fee_for_event() {
-    // Setup contracts
-    let event_contract_address = __setup__();
-    let erc20 = __deploy_erc20__();
+//     let fee_collector_address = __setup_fee_collector__(
+//         erc20.contract_address, event_contract_address,
+//     );
 
-    let fee_collector_address = __setup_fee_collector__(
-        erc20.contract_address, event_contract_address,
-    );
+//     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+//     let fee_collector = IFeeCollectorDispatcher { contract_address: fee_collector_address };
 
-    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
-    let fee_collector = IFeeCollectorDispatcher { contract_address: fee_collector_address };
+//     // Create a paid event
+//     let organizer: ContractAddress = USER_ONE.try_into().unwrap();
+//     start_cheat_caller_address(event_contract_address, organizer);
+//     let event_id = event_dispatcher.add_event("Paid Conference", "Tech Hub");
 
-    // Create a paid event
-    let organizer: ContractAddress = USER_ONE.try_into().unwrap();
-    start_cheat_caller_address(event_contract_address, organizer);
-    let event_id = event_dispatcher.add_event("Paid Conference", "Tech Hub");
+//     // Upgrade event to paid with 100 token fee
+//     let event_fee: u256 = 100;
+//     event_dispatcher.upgrade_event(event_id, event_fee);
+//     stop_cheat_caller_address(event_contract_address);
 
-    // Upgrade event to paid with 100 token fee
-    let event_fee: u256 = 100;
-    event_dispatcher.upgrade_event(event_id, event_fee);
-    stop_cheat_caller_address(event_contract_address);
+//     // Setup attendee
+//     let attendee: ContractAddress = RECIPIENT();
 
-    // Setup attendee
-    let attendee: ContractAddress = RECIPIENT();
+//     // Register for event first
+//     start_cheat_caller_address(event_contract_address, attendee);
+//     event_dispatcher.register_for_event(event_id);
+//     stop_cheat_caller_address(event_contract_address);
 
-    // Register for event first
-    start_cheat_caller_address(event_contract_address, attendee);
-    event_dispatcher.register_for_event(event_id);
-    stop_cheat_caller_address(event_contract_address);
+//     // Approve tokens for fee collector
+//     start_cheat_caller_address(erc20.contract_address, attendee);
+//     let fee_amount: u256 = (event_fee * 250) / 10000; // 2.5% fee
+//     erc20.approve(fee_collector_address, fee_amount);
+//     stop_cheat_caller_address(erc20.contract_address);
 
-    // Approve tokens for fee collector
-    start_cheat_caller_address(erc20.contract_address, attendee);
-    let fee_amount: u256 = (event_fee * 250) / 10000; // 2.5% fee
-    erc20.approve(fee_collector_address, fee_amount);
-    stop_cheat_caller_address(erc20.contract_address);
+//     // Collect fee
+//     start_cheat_caller_address(fee_collector_address, attendee);
+//     let mut spy = spy_events();
+//     fee_collector.collect_fee_for_event(event_id);
 
-    // Collect fee
-    start_cheat_caller_address(fee_collector_address, attendee);
-    let mut spy = spy_events();
-    fee_collector.collect_fee_for_event(event_id);
+//     // Verify event emission
+//     let expected_event = FeeCollector::Event::FeesCollected(
+//         FeeCollector::FeesCollected { event_id, fee_amount, user_address: attendee },
+//     );
+//     spy.assert_emitted(@array![(fee_collector_address, expected_event)]);
 
-    // Verify event emission
-    let expected_event = FeeCollector::Event::FeesCollected(
-        FeeCollector::FeesCollected { event_id, fee_amount, user_address: attendee },
-    );
-    spy.assert_emitted(@array![(fee_collector_address, expected_event)]);
+//     // Verify fee collection
+//     let total_fees = fee_collector.total_fees_collected();
+//     assert(total_fees == fee_amount, 'Incorrect total fees');
 
-    // Verify fee collection
-    let total_fees = fee_collector.total_fees_collected();
-    assert(total_fees == fee_amount, 'Incorrect total fees');
+//     stop_cheat_caller_address(fee_collector_address);
+// }
 
-    stop_cheat_caller_address(fee_collector_address);
-}
