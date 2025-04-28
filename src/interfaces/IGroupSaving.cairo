@@ -28,4 +28,9 @@ pub trait IGroupSaving<TContractState> {
     fn total_fees_collected(self: @TContractState) -> u256;
 
     fn upgrade_contract(ref self: TContractState, new_class_hash: ClassHash);
+
+    // Getterfunctions
+    fn get_current_round(self: @TContractState, group_id: felt252) -> u32;
+    fn is_group_full(self: @TContractState, group_id: felt252) -> bool;
+    fn get_group_members(self: @TContractState, group_id: felt252) -> Array<ContractAddress>;
 }

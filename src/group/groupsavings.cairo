@@ -41,41 +41,22 @@ mod GroupSaving {
         group_counts: u256,
         groups: Map<felt252, Group>,
         // Member Contributions
-        member_contribution: Map<
-            (ContractAddress, felt252), u128,
-        >, // Maps (member_address, group_id) to contribution amount
-        member_last_contributed_round: Map<
-            (ContractAddress, felt252), u32,
-        >, // Maps (member_address, group_id) to last contributed round
-        member_payout_status: Map<
-            (ContractAddress, felt252), bool,
-        >, // Maps (member_address, group_id) to payout status (whether they have collected)
+        member_contribution: Map<(ContractAddress, felt252), u128>,
+        member_last_contributed_round: Map<(ContractAddress, felt252), u32>,
+        member_payout_status: Map<(ContractAddress, felt252), bool>,
         // Contribution Cycle State
-        group_current_round: Map<felt252, u32>, // Maps group_id to current contribution round
-        group_is_full: Map<felt252, bool>, // Maps group_id to a flag if the group is full
-        group_is_active: Map<
-            felt252, bool,
-        >, // Maps group_id to a flag if the group is active (contribution cycle running)
-        group_is_completed: Map<
-            felt252, bool,
-        >, // Maps group_id to a flag if the group has completed all rounds
-        group_next_payout_index: Map<
-            felt252, u32,
-        >, // Maps group_id to the next index in payout order
+        group_current_round: Map<felt252, u32>,
+        group_is_full: Map<felt252, bool>,
+        group_is_active: Map<felt252, bool>,
+        group_is_completed: Map<felt252, bool>,
+        group_next_payout_index: Map<felt252, u32>,
         // Group Membership
-        group_members: Map<
-            felt252, Array<ContractAddress>,
-        >, // Maps group_id to an array of member addresses
-        // group_payout_order: Map<
-        //     felt252, Array<ContractAddress>,
-        // >,// Maps group_id to an array of member addresses (payout order)
+        group_members_list: Map<(felt252, u32), ContractAddress>, // Replaced group_members
         // Track existing group IDs
-        group_ids: Map<felt252, bool>, // All group Id to use for is_group_id_exists
-        group_payout_orders: Map<
-            (felt252, u32), ContractAddress,
-        >, // payout order for a group(group_id, index) -> ContractAddress
-        group_member_counts: Map<felt252, u32>, // number of members in a group
-        user_groups: Map<ContractAddress, felt252> // list groups created by an address
+        group_ids: Map<felt252, bool>,
+        group_payout_orders: Map<(felt252, u32), ContractAddress>,
+        group_member_counts: Map<felt252, u32>,
+        user_groups: Map<ContractAddress, felt252>,
     }
 
     /// @notice Events emitted by the contract
@@ -196,6 +177,39 @@ mod GroupSaving {
         }
 
         fn upgrade_contract(ref self: ContractState, new_class_hash: ClassHash) {}
+
+        fn get_current_round(self: @ContractState, group_id: felt252) -> u32 {
+            // Validate group exists
+            assert(self.group_ids.read(group_id), GROUP_NOT_FOUND);
+            // Return current round (0 if not started)
+            self.group_current_round.read(group_id)
+        }
+
+        fn is_group_full(self: @ContractState, group_id: felt252) -> bool {
+            // Validate group exists
+            assert(self.group_ids.read(group_id), GROUP_NOT_FOUND);
+            // Return whether the group is full
+            self.group_is_full.read(group_id)
+        }
+
+        fn get_group_members(self: @ContractState, group_id: felt252) -> Array<ContractAddress> {
+            // Validate group exists
+            assert(self.group_ids.read(group_id), GROUP_NOT_FOUND);
+
+            // Get member count
+            let count = self.group_member_counts.read(group_id);
+
+            // Reconstruct array
+            let mut members_array = array![];
+            let mut i = 0;
+            while i != count {
+                let member = self.group_members_list.read((group_id, i));
+                members_array.append(member);
+                i += 1;
+            }
+
+            members_array
+        }
     }
 
     #[generate_trait]
