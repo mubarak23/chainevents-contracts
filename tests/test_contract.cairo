@@ -580,3 +580,4 @@ fn test_unregister_from_event() {
 //     stop_cheat_caller_address(fee_collector_address);
 // }
 
+
