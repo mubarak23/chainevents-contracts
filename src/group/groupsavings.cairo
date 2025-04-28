@@ -37,25 +37,51 @@ mod GroupSaving {
         ownable: OwnableComponent::Storage,
         #[substorage(v0)]
         upgradeable: UpgradeableComponent::Storage,
-        // Group Management
+        // Tracks the total number of groups created (incremented in create_group).
         group_counts: u256,
+        // Maps group_id (felt252) to Group struct (creator, max_members, contribution_amount,
+        // duration_in_days).
+        // Used by view_group to retrieve group details.
         groups: Map<felt252, Group>,
-        // Member Contributions
+        // Maps (member_address, group_id) to the member's contribution amount (u128).
+        // Tracks contributions for each member in a group.
         member_contribution: Map<(ContractAddress, felt252), u128>,
+        // Maps (member_address, group_id) to the last round the member contributed to (u32).
+        // Used to track contribution history.
         member_last_contributed_round: Map<(ContractAddress, felt252), u32>,
+        // Maps (member_address, group_id) to a boolean indicating if the member has collected their
+        // payout.
+        // Tracks payout status for each member in a group.
         member_payout_status: Map<(ContractAddress, felt252), bool>,
-        // Contribution Cycle State
+        // Maps group_id to the current contribution round (u32).
+        // Used by get_current_round; defaults to 0 for non-started groups.
         group_current_round: Map<felt252, u32>,
+        // Maps group_id to a boolean indicating if the group has reached max_members.
+        // Used by is_group_full and updated in join_group.
         group_is_full: Map<felt252, bool>,
+        // Maps group_id to a boolean indicating if the group's contribution cycle is active.
+        // Tracks whether the group is currently running.
         group_is_active: Map<felt252, bool>,
+        // Maps group_id to a boolean indicating if the group has completed all rounds.
+        // Tracks group completion status.
         group_is_completed: Map<felt252, bool>,
+        // Maps group_id to the next index (u32) in the payout order.
+        // Tracks the current position in the payout sequence.
         group_next_payout_index: Map<felt252, u32>,
-        // Group Membership
-        group_members_list: Map<(felt252, u32), ContractAddress>, // Replaced group_members
-        // Track existing group IDs
+        // Maps (group_id, index) to a member’s ContractAddress.
+        // Stores the ordered list of group members, used by get_group_members to reconstruct the
+        // member list.
+        group_members_list: Map<(felt252, u32), ContractAddress>,
+        // Maps group_id to a boolean indicating if the group exists.
+        // Used by all getters and other functions to validate group_id.
         group_ids: Map<felt252, bool>,
+        // Maps (group_id, index) to a ContractAddress in the payout order.
+        // Stores the payout sequence set in create_group.
         group_payout_orders: Map<(felt252, u32), ContractAddress>,
+        // Maps group_id to the number of members (u32) in the group.
+        // Used by get_group_members and join_group to manage the member list.
         group_member_counts: Map<felt252, u32>,
+        // Maps a user’s ContractAddress to a group_id they created.
         user_groups: Map<ContractAddress, felt252>,
     }
 
