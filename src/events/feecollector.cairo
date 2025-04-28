@@ -3,17 +3,15 @@
 /// @notice A contract for fee base on paid events and number of user that purchase the ticket.
 /// @dev Implements Ownable and Upgradeable components from OpenZeppelin
 pub mod FeeCollector {
-    use chainevents_contracts::base::types::{EventDetails, EventType};
     use chainevents_contracts::base::errors::Errors::{EVENT_CLOSED, EVENT_NOT_PAID};
-    use chainevents_contracts::interfaces::IFeeCollector::IFeeCollector;
+    use chainevents_contracts::base::types::{EventDetails, EventType};
     use chainevents_contracts::interfaces::IEvent::{IEventDispatcher, IEventDispatcherTrait};
-    use core::starknet::{
-        ContractAddress, get_caller_address, ClassHash, get_contract_address,
-        storage::{Map, StorageMapReadAccess, StorageMapWriteAccess}
-    };
+    use chainevents_contracts::interfaces::IFeeCollector::IFeeCollector;
+    use core::starknet::storage::{Map, StorageMapReadAccess, StorageMapWriteAccess};
+    use core::starknet::{ClassHash, ContractAddress, get_caller_address, get_contract_address};
     use openzeppelin::access::ownable::OwnableComponent;
-    use openzeppelin_upgrades::UpgradeableComponent;
     use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use openzeppelin::upgrades::UpgradeableComponent;
 
     component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
     component!(path: UpgradeableComponent, storage: upgradeable, event: UpgradeableEvent);
@@ -34,7 +32,7 @@ pub mod FeeCollector {
         #[substorage(v0)]
         upgradeable: UpgradeableComponent::Storage,
         event_ticket_fees: Map<
-            ContractAddress, (u256, u256)
+            ContractAddress, (u256, u256),
         >, // map<user_address, (event_id, fee_amount)>
         event_ticket_total_fee: Map<u256, u256>, // Map<event_id, total_fee_collected>
         total_fee_collected: u256,
@@ -59,7 +57,7 @@ pub mod FeeCollector {
     pub struct FeesCollected {
         pub event_id: u256,
         pub fee_amount: u256,
-        pub user_address: ContractAddress
+        pub user_address: ContractAddress,
     }
 
     /// @notice Initializes the Events contract
@@ -69,7 +67,7 @@ pub mod FeeCollector {
         ref self: ContractState,
         fee_percentage: u256,
         fee_token_address: ContractAddress,
-        events_contract_address: ContractAddress
+        events_contract_address: ContractAddress,
     ) {
         self.ownable.initializer(get_caller_address());
         self.total_fee_collected.write(0);

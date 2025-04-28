@@ -2,24 +2,21 @@
 //                              Events TEST
 // *************************************************************************
 
+use chainevents_contracts::base::types::EventType;
+use chainevents_contracts::events::chainevents::ChainEvents;
+use chainevents_contracts::events::feecollector::FeeCollector;
+use chainevents_contracts::interfaces::IEvent::{IEventDispatcher, IEventDispatcherTrait};
+use chainevents_contracts::interfaces::IFeeCollector::{
+    IFeeCollectorDispatcher, IFeeCollectorDispatcherTrait,
+};
 use core::result::ResultTrait;
 use core::traits::TryInto;
-use starknet::{ContractAddress};
-
-use snforge_std::{
-    declare, start_cheat_caller_address, stop_cheat_caller_address, ContractClassTrait,
-    DeclareResultTrait, spy_events, EventSpyAssertionsTrait,
-};
-
 use openzeppelin::token::erc20::interface::{IERC20CamelDispatcher, IERC20CamelDispatcherTrait};
-
-use chainevents_contracts::interfaces::IEvent::{IEventDispatcher, IEventDispatcherTrait};
-use chainevents_contracts::events::chainevents::ChainEvents;
-use chainevents_contracts::base::types::EventType;
-use chainevents_contracts::interfaces::IFeeCollector::{
-    IFeeCollectorDispatcher, IFeeCollectorDispatcherTrait
+use snforge_std::{
+    ContractClassTrait, DeclareResultTrait, EventSpyAssertionsTrait, declare, spy_events,
+    start_cheat_caller_address, stop_cheat_caller_address,
 };
-use chainevents_contracts::events::feecollector::FeeCollector;
+use starknet::ContractAddress;
 
 const USER_ONE: felt252 = 'JOE';
 const USER_TWO: felt252 = 'DOE';
@@ -65,7 +62,7 @@ fn __deploy_erc20__() -> IERC20CamelDispatcher {
 }
 
 fn __setup_fee_collector__(
-    erc20_address: ContractAddress, event_contract_address: ContractAddress
+    erc20_address: ContractAddress, event_contract_address: ContractAddress,
 ) -> ContractAddress {
     // deploy fee collector contract
     let fee_collector_class_hash = declare("FeeCollector").unwrap().contract_class();
@@ -118,15 +115,15 @@ fn test_event_registration() {
 
     assert(
         attendee_registration_details.attendee_address == user_two_address,
-        'attendee_address mismatch'
+        'attendee_address mismatch',
     );
     assert(
         attendee_registration_details.nft_contract_address == user_two_address,
-        'nft_contract_address mismatch'
+        'nft_contract_address mismatch',
     );
     assert(attendee_registration_details.nft_token_id == 0, 'nft_token_id mismatch');
     assert(
-        attendee_registration_details.organizer == event_details.organizer, 'organizer mismatch'
+        attendee_registration_details.organizer == event_details.organizer, 'organizer mismatch',
     );
     stop_cheat_caller_address(event_contract_address);
 }
@@ -192,7 +189,7 @@ fn test_rsvp_for_event_should_emit_event_on_success() {
     event_dispatcher.rsvp_for_event(event_id);
 
     let expected_event = ChainEvents::Event::RSVPForEvent(
-        ChainEvents::RSVPForEvent { event_id: 1, attendee_address: caller }
+        ChainEvents::RSVPForEvent { event_id: 1, attendee_address: caller },
     );
     spy.assert_emitted(@array![(event_contract_address, expected_event)]);
 
@@ -522,7 +519,7 @@ fn test_unregister_from_event() {
     event_dispatcher.unregister_from_event(event_id);
 
     let expected_event = ChainEvents::Event::UnregisteredEvent(
-        ChainEvents::UnregisteredEvent { event_id, user_address: USER_TWO.try_into().unwrap() }
+        ChainEvents::UnregisteredEvent { event_id, user_address: USER_TWO.try_into().unwrap() },
     );
     spy.assert_emitted(@array![(event_contract_address, expected_event)]);
 
@@ -536,7 +533,7 @@ fn test_collect_fee_for_event() {
     let erc20 = __deploy_erc20__();
 
     let fee_collector_address = __setup_fee_collector__(
-        erc20.contract_address, event_contract_address
+        erc20.contract_address, event_contract_address,
     );
 
     let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
@@ -573,7 +570,7 @@ fn test_collect_fee_for_event() {
 
     // Verify event emission
     let expected_event = FeeCollector::Event::FeesCollected(
-        FeeCollector::FeesCollected { event_id, fee_amount, user_address: attendee }
+        FeeCollector::FeesCollected { event_id, fee_amount, user_address: attendee },
     );
     spy.assert_emitted(@array![(fee_collector_address, expected_event)]);
 
@@ -583,4 +580,3 @@ fn test_collect_fee_for_event() {
 
     stop_cheat_caller_address(fee_collector_address);
 }
-

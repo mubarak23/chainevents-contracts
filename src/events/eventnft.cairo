@@ -1,18 +1,17 @@
 #[starknet::contract]
 pub mod EventNFT {
-    use starknet::{ContractAddress, get_block_timestamp};
+    use chainevents_contracts::base::errors::Errors::{
+        ALREADY_MINTED, NOT_TOKEN_OWNER, TOKEN_DOES_NOT_EXIST,
+    };
+    use chainevents_contracts::interfaces::IEventNFT::IEventNFT;
     use core::num::traits::zero::Zero;
     use openzeppelin::introspection::src5::SRC5Component;
     use openzeppelin::token::erc721::{ERC721Component, ERC721HooksEmptyImpl};
-
     use starknet::storage::{
-        Map, StoragePointerWriteAccess, StoragePointerReadAccess, StorageMapReadAccess,
-        StorageMapWriteAccess
+        Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess,
+        StoragePointerWriteAccess,
     };
-    use chainevents_contracts::interfaces::IEventNFT::IEventNFT;
-    use chainevents_contracts::base::errors::Errors::{
-        ALREADY_MINTED, NOT_TOKEN_OWNER, TOKEN_DOES_NOT_EXIST
-    };
+    use starknet::{ContractAddress, get_block_timestamp};
 
     // *************************************************************************
     //                             COMPONENTS
@@ -34,7 +33,7 @@ pub mod EventNFT {
         #[flat]
         ERC721Event: ERC721Component::Event,
         #[flat]
-        SRC5Event: SRC5Component::Event
+        SRC5Event: SRC5Component::Event,
     }
 
     #[storage]
@@ -46,7 +45,7 @@ pub mod EventNFT {
         last_minted_id: u256,
         mint_timestamp: Map<u256, u64>,
         user_token_id: Map<ContractAddress, u256>,
-        event_id: u256
+        event_id: u256,
     }
 
     #[constructor]

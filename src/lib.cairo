@@ -1,7 +1,9 @@
 pub mod base;
-pub mod interfaces;
 pub mod events;
-pub mod mocks {
-    pub mod erc20;
-}
+pub mod group;
+pub mod interfaces;
+// pub mod mocks {
+//     pub mod erc20;
+// }
+
 

@@ -1,5 +1,5 @@
 use chainevents_contracts::base::types::{EventDetails, EventRegistration};
-use core::starknet::{ContractAddress, ClassHash};
+use core::starknet::{ClassHash, ContractAddress};
 /// @title Event Management Interface
 /// @notice Interface for managing events, registrations, and attendance
 /// @dev Includes functions for creating, managing events and handling registrations
@@ -9,7 +9,7 @@ pub trait IEvent<TContractState> {
     fn add_event(ref self: TContractState, name: ByteArray, location: ByteArray) -> u256;
     fn register_for_event(ref self: TContractState, event_id: u256);
     fn end_event_registration(
-        ref self: TContractState, event_id: u256
+        ref self: TContractState, event_id: u256,
     ); // only owner can closed an event
     fn rsvp_for_event(ref self: TContractState, event_id: u256);
     fn upgrade_event(ref self: TContractState, event_id: u256, paid_amount: u256);
