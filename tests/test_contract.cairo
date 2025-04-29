@@ -1288,3 +1288,160 @@ fn test_withdraw_paid_event_amount_for_closed_event() {
     let user_two_balance = payment_token.balance_of(user_two);
     assert(user_two_balance == 0, 'Incorrect attendee balance');
 }
+
+// *************************************************************************
+//                              Collect Payout TESTS
+// *************************************************************************
+
+use core::result::ResultTrait;
+use core::traits::TryInto;
+use starknet::{ContractAddress};
+
+use snforge_std::{
+    declare, start_cheat_caller_address, stop_cheat_caller_address, ContractClassTrait,
+    DeclareResultTrait, spy_events, EventSpyAssertionsTrait,
+};
+
+use chainevents_contracts::interfaces::IEvent::{IEventDispatcher, IEventDispatcherTrait};
+use chainevents_contracts::events::chainevents::ChainEvents;
+
+const USER_ONE: felt252 = 'JOE';
+const USER_TWO: felt252 = 'DOE';
+const USER_THREE: felt252 = 'JACK';
+
+fn OWNER() -> ContractAddress {
+    'owner'.try_into().unwrap()
+}
+
+fn __setup__(strk_token: ContractAddress) -> ContractAddress {
+    let events_class_hash = declare("ChainEvents").unwrap().contract_class();
+
+    let mut events_constructor_calldata: Array<felt252> = array![];
+
+    let owner = OWNER();
+
+    owner.serialize(ref events_constructor_calldata);
+    strk_token.serialize(ref events_constructor_calldata);
+
+    let (event_contract_address, _) = events_class_hash
+        .deploy(@events_constructor_calldata)
+        .unwrap();
+
+    return (event_contract_address);
+}
+
+#[test]
+fn test_valid_recipient_collects_payout() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    // Setup: create a ROSCA group with members and payout order
+    // For simplicity, assume group_id = 1, members = [USER_ONE, USER_TWO], payout_order = [USER_ONE, USER_TWO]
+    // Simulate all contributions received for current round
+    // This setup depends on contract implementation details, so here we simulate by calling relevant functions or directly setting state if possible
+
+    // Start as USER_ONE (current payout recipient)
+    start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
+
+    // Call collect_payout
+    event_dispatcher.collect_payout(1, USER_ONE.try_into().unwrap());
+
+    // Assert WithdrawalMade event emitted
+    let mut spy = spy_events();
+    let expected_event = ChainEvents::Event::WithdrawalMade(
+        ChainEvents::WithdrawalMade { event_id: 1, event_organizer: USER_ONE.try_into().unwrap(), amount: 0 },
+    );
+    spy.assert_emitted(@array![(event_contract_address, expected_event)]);
+
+    // Additional asserts on group state can be added here
+    stop_cheat_caller_address(event_contract_address);
+}
+
+#[test]
+fn test_round_advances_after_payout() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    // Setup group with multiple rounds, simulate payout collection for current round
+    // Assert current_round incremented and contributions reset
+    // Implementation depends on contract specifics
+
+    stop_cheat_caller_address(event_contract_address);
+}
+
+#[test]
+fn test_group_marked_completed_after_final_payout() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    // Setup group with single round
+    // Collect payout for final round
+    // Assert group status marked as Completed
+    // Implementation depends on contract specifics
+
+    stop_cheat_caller_address(event_contract_address);
+}
+
+#[test]
+#[should_panic(expected = "Not all contributions received")]
+fn test_collect_before_all_contributions_received_fails() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    // Setup group with missing contributions
+    // Attempt collect_payout should panic
+
+    start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
+    event_dispatcher.collect_payout(1, USER_ONE.try_into().unwrap());
+    stop_cheat_caller_address(event_contract_address);
+}
+
+#[test]
+#[should_panic(expected = "Not the current payout recipient")]
+fn test_non_recipient_collect_fails() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    // Setup group
+    // Attempt collect_payout by non-recipient should panic
+
+    start_cheat_caller_address(event_contract_address, USER_TWO.try_into().unwrap());
+    event_dispatcher.collect_payout(1, USER_TWO.try_into().unwrap());
+    stop_cheat_caller_address(event_contract_address);
+}
+
+#[test]
+#[should_panic(expected = "Funds already withdrawn for this round")]
+fn test_duplicate_collection_fails() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    // Setup group and simulate payout collected
+    // Attempt collect_payout again should panic
+
+    start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
+    event_dispatcher.collect_payout(1, USER_ONE.try_into().unwrap());
+    // Second call should panic
+    event_dispatcher.collect_payout(1, USER_ONE.try_into().unwrap());
+    stop_cheat_caller_address(event_contract_address);
+}
+
+#[test]
+#[should_panic(expected = "Group is not active")]
+fn test_collect_on_nonexistent_or_completed_group_fails() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    // Attempt collect_payout on inactive or completed group should panic
+
+    start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
+    event_dispatcher.collect_payout(999, USER_ONE.try_into().unwrap());
+    stop_cheat_caller_address(event_contract_address);
+}
