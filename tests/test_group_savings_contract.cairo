@@ -7,7 +7,7 @@ use core::felt252;
 use core::traits::Into;
 use snforge_std::{
     ContractClassTrait, DeclareResultTrait, declare, start_cheat_caller_address,
-    stop_cheat_caller_address,
+    stop_cheat_caller_address, store,
 };
 use starknet::{
     ClassHash, ContractAddress, get_block_timestamp, get_caller_address, get_contract_address,
@@ -132,4 +132,167 @@ fn test_failed_create_group_with_duplicate_id() {
     let members1 = array![member1, member2];
     contract.create_group('1', creator, 5, 10000, 30, members);
     contract.create_group('1', creator, 2, 5000, 5, members1);
+}
+
+
+// Tests for getter functions
+#[test]
+fn test_get_current_round_active_group() {
+    let contract = contract();
+    let group_id = 'test_group';
+    let max_members = 3;
+    let payout_order = array![member1, member2, member3];
+
+    // Create group
+    contract.create_group(group_id, creator, max_members, 100, 30, payout_order);
+
+    // Add all members to make the group full
+    contract.join_group(group_id, member1);
+    contract.join_group(group_id, member2);
+    contract.join_group(group_id, member3);
+
+    // Start the cycle
+    contract.start_cycle(group_id);
+
+    // Test
+    let round = contract.get_current_round(group_id);
+    assert(round == 1, 'Current round should be 1');
+}
+
+#[test]
+fn test_get_current_round_not_started() {
+    let contract = contract();
+    let group_id = 'test_group';
+    let max_members = 3;
+    let payout_order = array![member1, member2, member3];
+
+    // Create group (round defaults to 0)
+    contract.create_group(group_id, creator, max_members, 100, 30, payout_order);
+
+    // Test
+    let round = contract.get_current_round(group_id);
+    assert(round == 0, 'Current round should be 0');
+}
+
+#[test]
+#[should_panic(expected: ('Group Not Found',))]
+fn test_get_current_round_non_existent_group() {
+    let contract = contract();
+    let group_id = 'non_existent';
+
+    // Test - should panic
+    contract.get_current_round(group_id);
+}
+
+#[test]
+fn test_is_group_full_not_full() {
+    let contract = contract();
+    let group_id = 'test_group';
+    let max_members = 3;
+    let payout_order = array![member1, member2, member3];
+
+    // Create group
+    contract.create_group(group_id, creator, max_members, 100, 30, payout_order);
+
+    // Add 2 members (not full)
+    contract.join_group(group_id, member1);
+    contract.join_group(group_id, member2);
+
+    // Test
+    let is_full = contract.is_group_full(group_id);
+    assert(!is_full, 'Group should not be full');
+}
+
+#[test]
+fn test_is_group_full_full() {
+    let contract = contract();
+    let group_id = 'test_group';
+    let max_members = 3;
+    let payout_order = array![member1, member2, member3];
+
+    // Create group
+    contract.create_group(group_id, creator, max_members, 100, 30, payout_order);
+
+    // Add 3 members (full)
+    contract.join_group(group_id, member1);
+    contract.join_group(group_id, member2);
+    contract.join_group(group_id, member3);
+
+    // Test
+    let is_full = contract.is_group_full(group_id);
+    assert(is_full, 'Group should be full');
+}
+
+#[test]
+#[should_panic(expected: ('Group Not Found',))]
+fn test_is_group_full_non_existent_group() {
+    let contract = contract();
+    let group_id = 'non_existent';
+
+    // Test - should panic
+    contract.is_group_full(group_id);
+}
+
+#[test]
+fn test_get_group_members_with_members() {
+    let contract = contract();
+    let group_id = 'test_group';
+    let max_members = 3;
+    let payout_order = array![member1, member2, member3];
+
+    // Create group
+    contract.create_group(group_id, creator, max_members, 100, 30, payout_order);
+
+    // Add members
+    contract.join_group(group_id, member1);
+    contract.join_group(group_id, member2);
+
+    // Test
+    let returned_members = contract.get_group_members(group_id);
+    assert(returned_members.len() == 2, 'Should return 2 members');
+    assert(*returned_members.at(0) == member1, 'Member 1 mismatch');
+    assert(*returned_members.at(1) == member2, 'Member 2 mismatch');
+}
+
+#[test]
+fn test_get_group_members_empty_group() {
+    let contract = contract();
+    let group_id = 'test_group';
+    let max_members = 3;
+    let payout_order = array![member1, member2, member3];
+
+    // Create group (no members yet)
+    contract.create_group(group_id, creator, max_members, 100, 30, payout_order);
+
+    // Test
+    let members = contract.get_group_members(group_id);
+    assert(members.len() == 0, 'Should return empty array');
+}
+
+#[test]
+#[should_panic(expected: ('Group Not Found',))]
+fn test_get_group_members_non_existent_group() {
+    let contract = contract();
+    let group_id = 'non_existent';
+
+    // Test - should panic
+    contract.get_group_members(group_id);
+}
+
+#[test]
+#[should_panic(expected: ('Member Already In Group',))]
+fn test_get_group_members_duplicate_member() {
+    let contract = contract();
+    let group_id = 'test_group';
+    let max_members = 3;
+    let payout_order = array![member1, member2, member3];
+
+    // Create group
+    contract.create_group(group_id, creator, max_members, 100, 30, payout_order);
+
+    // Add member1
+    contract.join_group(group_id, member1);
+
+    // Try to add member1 again (should panic)
+    contract.join_group(group_id, member1);
 }

@@ -37,45 +37,52 @@ mod GroupSaving {
         ownable: OwnableComponent::Storage,
         #[substorage(v0)]
         upgradeable: UpgradeableComponent::Storage,
-        // Group Management
+        // Tracks the total number of groups created (incremented in create_group).
         group_counts: u256,
+        // Maps group_id (felt252) to Group struct (creator, max_members, contribution_amount,
+        // duration_in_days).
+        // Used by view_group to retrieve group details.
         groups: Map<felt252, Group>,
-        // Member Contributions
-        member_contribution: Map<
-            (ContractAddress, felt252), u128,
-        >, // Maps (member_address, group_id) to contribution amount
-        member_last_contributed_round: Map<
-            (ContractAddress, felt252), u32,
-        >, // Maps (member_address, group_id) to last contributed round
-        member_payout_status: Map<
-            (ContractAddress, felt252), bool,
-        >, // Maps (member_address, group_id) to payout status (whether they have collected)
-        // Contribution Cycle State
-        group_current_round: Map<felt252, u32>, // Maps group_id to current contribution round
-        group_is_full: Map<felt252, bool>, // Maps group_id to a flag if the group is full
-        group_is_active: Map<
-            felt252, bool,
-        >, // Maps group_id to a flag if the group is active (contribution cycle running)
-        group_is_completed: Map<
-            felt252, bool,
-        >, // Maps group_id to a flag if the group has completed all rounds
-        group_next_payout_index: Map<
-            felt252, u32,
-        >, // Maps group_id to the next index in payout order
-        // Group Membership
-        group_members: Map<
-            felt252, Array<ContractAddress>,
-        >, // Maps group_id to an array of member addresses
-        // group_payout_order: Map<
-        //     felt252, Array<ContractAddress>,
-        // >,// Maps group_id to an array of member addresses (payout order)
-        // Track existing group IDs
-        group_ids: Map<felt252, bool>, // All group Id to use for is_group_id_exists
-        group_payout_orders: Map<
-            (felt252, u32), ContractAddress,
-        >, // payout order for a group(group_id, index) -> ContractAddress
-        group_member_counts: Map<felt252, u32>, // number of members in a group
-        user_groups: Map<ContractAddress, felt252> // list groups created by an address
+        // Maps (member_address, group_id) to the member's contribution amount (u128).
+        // Tracks contributions for each member in a group.
+        member_contribution: Map<(ContractAddress, felt252), u128>,
+        // Maps (member_address, group_id) to the last round the member contributed to (u32).
+        // Used to track contribution history.
+        member_last_contributed_round: Map<(ContractAddress, felt252), u32>,
+        // Maps (member_address, group_id) to a boolean indicating if the member has collected their
+        // payout.
+        // Tracks payout status for each member in a group.
+        member_payout_status: Map<(ContractAddress, felt252), bool>,
+        // Maps group_id to the current contribution round (u32).
+        // Used by get_current_round; defaults to 0 for non-started groups.
+        group_current_round: Map<felt252, u32>,
+        // Maps group_id to a boolean indicating if the group has reached max_members.
+        // Used by is_group_full and updated in join_group.
+        group_is_full: Map<felt252, bool>,
+        // Maps group_id to a boolean indicating if the group's contribution cycle is active.
+        // Tracks whether the group is currently running.
+        group_is_active: Map<felt252, bool>,
+        // Maps group_id to a boolean indicating if the group has completed all rounds.
+        // Tracks group completion status.
+        group_is_completed: Map<felt252, bool>,
+        // Maps group_id to the next index (u32) in the payout order.
+        // Tracks the current position in the payout sequence.
+        group_next_payout_index: Map<felt252, u32>,
+        // Maps (group_id, index) to a member's ContractAddress.
+        // Stores the ordered list of group members, used by get_group_members to reconstruct the
+        // member list.
+        group_members_list: Map<(felt252, u32), ContractAddress>,
+        // Maps group_id to a boolean indicating if the group exists.
+        // Used by all getters and other functions to validate group_id.
+        group_ids: Map<felt252, bool>,
+        // Maps (group_id, index) to a ContractAddress in the payout order.
+        // Stores the payout sequence set in create_group.
+        group_payout_orders: Map<(felt252, u32), ContractAddress>,
+        // Maps group_id to the number of members (u32) in the group.
+        // Used by get_group_members and join_group to manage the member list.
+        group_member_counts: Map<felt252, u32>,
+        // Maps a user's ContractAddress to a group_id they created.
+        user_groups: Map<ContractAddress, felt252>,
     }
 
     /// @notice Events emitted by the contract
@@ -187,15 +194,91 @@ mod GroupSaving {
             ref self: ContractState, group_id: felt252, member: ContractAddress, amount: u128,
         ) {}
 
-        fn start_cycle(ref self: ContractState, group_id: felt252) {}
+        fn start_cycle(ref self: ContractState, group_id: felt252) {
+            // Validate group exists
+            assert(self.group_ids.read(group_id), 'Group Not Found');
 
-        fn join_group(ref self: ContractState, group_id: felt252, member: ContractAddress) {}
+            // Validate group is full
+            assert(self.group_is_full.read(group_id), 'Group Is Not Full');
+
+            // Validate group is not already active
+            assert(!self.group_is_active.read(group_id), 'Group Is Already Active');
+
+            // Set group as active
+            self.group_is_active.write(group_id, true);
+
+            // Set current round to 1
+            self.group_current_round.write(group_id, 1);
+        }
+
+        fn join_group(ref self: ContractState, group_id: felt252, member: ContractAddress) {
+            // Validate group exists
+            assert(self.group_ids.read(group_id), GROUP_NOT_FOUND);
+
+            // Validate group is not full
+            assert(!self.group_is_full.read(group_id), GROUP_FULL);
+
+            // Validate group is accepting members
+            assert(!self.group_is_active.read(group_id), GROUP_NOT_ACCEPTING_MEMBERS);
+
+            // Validate member is not already in the group
+            let member_count = self.group_member_counts.read(group_id);
+            for i in 0..member_count {
+                let existing_member = self.group_members_list.read((group_id, i));
+                assert(existing_member != member, MEMBER_ALREADY_IN_GROUP);
+            }
+
+            // Add member to the group
+            self.group_members_list.write((group_id, member_count), member);
+
+            // Update member count
+            self.group_member_counts.write(group_id, member_count + 1);
+
+            // Check if group is now full
+            let group = self.groups.read(group_id);
+            if member_count + 1 == group.max_members {
+                self.group_is_full.write(group_id, true);
+            }
+        }
 
         fn total_fees_collected(self: @ContractState) -> u256 {
             0
         }
 
         fn upgrade_contract(ref self: ContractState, new_class_hash: ClassHash) {}
+
+        fn get_current_round(self: @ContractState, group_id: felt252) -> u32 {
+            // Validate group exists
+            assert(self.group_ids.read(group_id), GROUP_NOT_FOUND);
+            // Return current round (0 if not started)
+            self.group_current_round.read(group_id)
+        }
+
+        fn is_group_full(self: @ContractState, group_id: felt252) -> bool {
+            // Validate group exists
+            assert(self.group_ids.read(group_id), GROUP_NOT_FOUND);
+            // Return whether the group is full
+            self.group_is_full.read(group_id)
+        }
+
+        fn get_group_members(self: @ContractState, group_id: felt252) -> Array<ContractAddress> {
+            // Validate group exists
+            assert(self.group_ids.read(group_id), GROUP_NOT_FOUND);
+
+            // Get member count
+            let count = self.group_member_counts.read(group_id);
+
+            // Reconstruct array
+            let mut members_array = array![];
+            let mut i = 0;
+            while i != count {
+                let member = self.group_members_list.read((group_id, i));
+                members_array.append(member);
+                i += 1;
+            }
+
+            members_array
+        }
     }
 
     #[generate_trait]
