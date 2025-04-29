@@ -171,19 +171,6 @@ pub mod ChainEvents {
 
     #[abi(embed_v0)]
     impl EventsImpl of IEvent<ContractState> {
-        // New storage for ROSCA groups and payouts
-        #[storage]
-        struct RoscaGroup {
-            group_id: u256,
-            members: Array<ContractAddress>,
-            payout_order: Array<ContractAddress>,
-            contributions_received: Map<ContractAddress, bool>,
-            current_round: u256,
-            total_rounds: u256,
-            status: u8, // 0 = Inactive, 1 = Active, 2 = Completed
-            funds_withdrawn: Map<u256, bool>, // round -> withdrawn status
-        }
-
         /// @notice Creates a new event
         /// @param name Name of the event
         /// @param location Location of the event
@@ -207,21 +194,35 @@ pub mod ChainEvents {
                 );
             event_id
         }
+    }
 
+    #[storage]
+    struct RoscaGroup {
+        group_id: u256,
+        members: Array<ContractAddress>,
+        payout_order: Array<ContractAddress>,
+        contributions_received: Map<ContractAddress, bool>,
+        current_round: u256,
+        total_rounds: u256,
+        status: u8, // 0 = Inactive, 1 = Active, 2 = Completed
+        funds_withdrawn: Map<u256, bool>, // round -> withdrawn status
+    }
+
+    impl EventsImpl {
         /// @notice Allows the current payout recipient to collect their payout for the round
         /// @param group_id The ID of the ROSCA group
         /// @param member The member address attempting to collect payout
         fn collect_payout(ref self: ContractState, group_id: u256, member: ContractAddress) {
             // Validate group exists and is active
-            let group = self.rosca_groups.read(group_id);
+            let group = StorageMapReadAccess::read(self.rosca_groups, group_id);
             assert(group.status == 1, 'Group is not active');
 
             // Ensure all contributions for current round have been received
             let mut all_contributed = true;
             let mut i = 0;
-            while i < group.members.len() {
-                let member_addr = group.members.at(i);
-                if !group.contributions_received.read(member_addr) {
+            while i < StorageMapReadAccess::len(group.members) {
+                let member_addr = StorageMapReadAccess::at(group.members, i);
+                if !StorageMapReadAccess::read(group.contributions_received, member_addr) {
                     all_contributed = false;
                     break;
                 }
@@ -230,35 +231,36 @@ pub mod ChainEvents {
             assert(all_contributed, 'Not all contributions received');
 
             // Confirm member is the designated recipient for this round
-            let current_recipient = group.payout_order.at(group.current_round - 1);
+            let current_recipient = StorageMapReadAccess::at(group.payout_order, group.current_round - 1);
             assert(current_recipient == member, 'Not the current payout recipient');
 
             // Prevent duplicate collections
-            assert(!group.funds_withdrawn.read(group.current_round), 'Funds already withdrawn for this round');
+            assert(!StorageMapReadAccess::read(group.funds_withdrawn, group.current_round), 'Funds already withdrawn for this round');
 
             // Mark funds as withdrawn
-            group.funds_withdrawn.write(group.current_round, true);
+            StorageMapWriteAccess::write(group.funds_withdrawn, group.current_round, true);
 
             // Transfer or mark funds withdrawn logic here (implementation depends on contract specifics)
             // For now, just emit an event
             self.emit(WithdrawalMade { event_id: group_id, event_organizer: member, amount: 0 });
 
             // Advance to next round or mark group as completed
+            let mut updated_group = group;
             if group.current_round == group.total_rounds {
-                group.status = 2; // Completed
+                updated_group.status = 2; // Completed
             } else {
-                group.current_round += 1;
+                updated_group.current_round += 1;
                 // Reset contributions_received for next round
                 let mut j = 0;
-                while j < group.members.len() {
-                    let m = group.members.at(j);
-                    group.contributions_received.write(m, false);
+                while j < StorageMapReadAccess::len(group.members) {
+                    let m = StorageMapReadAccess::at(group.members, j);
+                    StorageMapWriteAccess::write(updated_group.contributions_received, m, false);
                     j += 1;
                 }
             }
 
             // Write updated group state
-            self.rosca_groups.write(group_id, group);
+            StorageMapWriteAccess::write(self.rosca_groups, group_id, updated_group);
         }
 
         /// @notice Registers a user for an event
