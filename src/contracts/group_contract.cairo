@@ -1,6 +1,8 @@
 mod GroupContract {
-    use starknet::ContractAddress;
     use core::assert;
+    // **Added the import for IGroupContract**
+    use src::interfaces::IGroupContract;
+    use starknet::ContractAddress;
 
     #[storage]
     struct ContractState {
@@ -16,18 +18,20 @@ mod GroupContract {
         group_is_full: Map<felt252, bool>,
     }
 
-    #[events]
-    enum Events {
-        MemberJoined { group_id: felt252, member: ContractAddress },
+    #[event]
+    struct MemberJoined {
+        group_id: felt252,
+        member: ContractAddress,
     }
 
-    impl ContractState {
+    // Implementing the IGroupContract trait for ContractState
+    impl ContractState of IGroupContract<ContractState> {
         /// Allows a user to join a group
         ///
         /// # Arguments
         /// - `group_id`: The unique identifier of the group
         /// - `member`: The address of the user joining the group
-        pub fn join_group(ref self: ContractState, group_id: felt252, member: ContractAddress) {
+        fn join_group(ref self: ContractState, group_id: felt252, member: ContractAddress) {
             // Ensure the group exists
             assert(self.group_ids.read(group_id), "Group does not exist.");
 
@@ -53,7 +57,8 @@ mod GroupContract {
             }
 
             // Emit an event for the member joining
-            emit MemberJoined { group_id, member };
+            emit
+            MemberJoined { group_id, member };
         }
     }
 }

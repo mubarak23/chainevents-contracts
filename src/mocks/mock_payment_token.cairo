@@ -1,12 +1,12 @@
 #[starknet::contract]
 pub mod PaymentToken {
-    use starknet::event::EventEmitter;
-    use starknet::{ContractAddress, get_caller_address};
-    use core::starknet::storage::{
-        StoragePointerReadAccess, StoragePointerWriteAccess, Map, StoragePathEntry,
-    };
     use chainevents_contracts::interfaces::IPaymentToken::IERC20;
     use core::num::traits::Zero;
+    use core::starknet::storage::{
+        Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess,
+    };
+    use starknet::event::EventEmitter;
+    use starknet::{ContractAddress, get_caller_address};
 
     #[storage]
     pub struct Storage {

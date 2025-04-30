@@ -2,21 +2,18 @@
 //                              Events TEST
 // *************************************************************************
 
+use chainevents_contracts::base::types::{EventDetails, EventRegistration, EventType};
+use chainevents_contracts::events::chainevents::ChainEvents;
+use chainevents_contracts::interfaces::IEvent::{IEventDispatcher, IEventDispatcherTrait};
+use chainevents_contracts::interfaces::IPaymentToken::{IERC20Dispatcher, IERC20DispatcherTrait};
 use core::result::ResultTrait;
 use core::traits::TryInto;
-use starknet::{ContractAddress};
-
-use snforge_std::{
-    declare, start_cheat_caller_address, stop_cheat_caller_address, ContractClassTrait,
-    DeclareResultTrait, spy_events, EventSpyAssertionsTrait,
-};
-
 use openzeppelin::token::erc20::interface::{IERC20CamelDispatcher, IERC20CamelDispatcherTrait};
-
-use chainevents_contracts::interfaces::IEvent::{IEventDispatcher, IEventDispatcherTrait};
-use chainevents_contracts::events::chainevents::ChainEvents;
-use chainevents_contracts::base::types::{EventDetails, EventType, EventRegistration};
-use chainevents_contracts::interfaces::IPaymentToken::{IERC20Dispatcher, IERC20DispatcherTrait};
+use snforge_std::{
+    ContractClassTrait, DeclareResultTrait, EventSpyAssertionsTrait, declare, spy_events,
+    start_cheat_caller_address, stop_cheat_caller_address,
+};
+use starknet::ContractAddress;
 
 const USER_ONE: felt252 = 'JOE';
 const USER_TWO: felt252 = 'DOE';
@@ -524,11 +521,11 @@ fn test_open_event_emission() {
                         ChainEvents::OpenEventRegistration {
                             event_id,
                             event_name: event_details.name,
-                            event_owner: USER_ONE.try_into().unwrap()
-                        }
-                    )
-                )
-            ]
+                            event_owner: USER_ONE.try_into().unwrap(),
+                        },
+                    ),
+                ),
+            ],
         );
 
     stop_cheat_caller_address(event_contract_address);
@@ -1275,7 +1272,7 @@ fn test_withdraw_paid_event_amount_for_closed_event() {
     stop_cheat_caller_address(event_contract_address);
 
     let expected_event = ChainEvents::Event::WithdrawalMade(
-        ChainEvents::WithdrawalMade { event_id, event_organizer: user_one, amount: event_fee }
+        ChainEvents::WithdrawalMade { event_id, event_organizer: user_one, amount: event_fee },
     );
     spy.assert_emitted(@array![(event_contract_address, expected_event)]);
 

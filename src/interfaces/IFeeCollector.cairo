@@ -1,4 +1,4 @@
-use core::starknet::{ClassHash};
+use core::starknet::ClassHash;
 /// @title Event Management Interface
 /// @notice Interface for managing events, registrations, and attendance
 /// @dev Includes functions for creating, managing events and handling registrations

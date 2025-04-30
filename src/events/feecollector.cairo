@@ -3,17 +3,17 @@
 /// @notice A contract for fee base on paid events and number of user that purchase the ticket.
 /// @dev Implements Ownable and Upgradeable components from OpenZeppelin
 pub mod FeeCollector {
-    use chainevents_contracts::base::types::{EventDetails, EventRegistration, EventType};
     use chainevents_contracts::base::errors::Errors::{
-        ZERO_ADDRESS_CALLER, NOT_OWNER, CLOSED_EVENT, ALREADY_REGISTERED, NOT_REGISTERED,
-        ALREADY_RSVP, INVALID_EVENT, EVENT_CLOSED,
+        ALREADY_REGISTERED, ALREADY_RSVP, CLOSED_EVENT, EVENT_CLOSED, INVALID_EVENT, NOT_OWNER,
+        NOT_REGISTERED, ZERO_ADDRESS_CALLER,
     };
+    use chainevents_contracts::base::types::{EventDetails, EventRegistration, EventType};
     use chainevents_contracts::interfaces::IFeeCollector::IFeeCollector;
-    use core::starknet::{
-        ContractAddress, get_caller_address, syscalls::deploy_syscall, ClassHash,
-        get_block_timestamp,
-        storage::{Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePathEntry},
+    use core::starknet::storage::{
+        Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePathEntry,
     };
+    use core::starknet::syscalls::deploy_syscall;
+    use core::starknet::{ClassHash, ContractAddress, get_block_timestamp, get_caller_address};
     use openzeppelin::access::ownable::OwnableComponent;
     use openzeppelin_upgrades::UpgradeableComponent;
     use openzeppelin_upgrades::interface::IUpgradeable;
@@ -87,10 +87,10 @@ pub mod FeeCollector {
 
 #[cfg(test)]
 mod tests {
-    use snforge_std::{declare, ContractClassTrait, DeclareResultTrait};
     use chainevents_contracts::interfaces::IFeeCollector::{
         IFeeCollectorDispatcher, IFeeCollectorDispatcherTrait,
     };
+    use snforge_std::{ContractClassTrait, DeclareResultTrait, declare};
 
     #[test]
     fn test_total_fees_collector() {
