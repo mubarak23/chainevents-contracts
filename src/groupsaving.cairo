@@ -9,7 +9,7 @@ pub mod GroupSaving {
     use core::result::ResultTrait;
     use core::panic::Panic;
 
-    // Group status constants
+    
     const STATUS_INACTIVE: felt252 = 0;
     const STATUS_ACTIVE: felt252 = 1;
     const STATUS_COMPLETED: felt252 = 2;
@@ -17,10 +17,10 @@ pub mod GroupSaving {
     #[storage]
     struct Storage {
         groups: Map<felt252, Group>;
-        contributions_received: Map<(felt252, felt252), felt252>; // (group_id, round) -> count
-        payout_collected: Map<(felt252, felt252), felt252>; // (group_id, round) -> 0 or 1
-        payout_order: Map<(felt252, felt252), ContractAddress>; // (group_id, index) -> member address
-        contributions_expected: Map<(felt252, felt252), felt252>; // (group_id, round) -> expected contributions count
+        contributions_received: Map<(felt252, felt252), felt252>; 
+        payout_collected: Map<(felt252, felt252), felt252>; 
+        payout_order: Map<(felt252, felt252), ContractAddress>; 
+        contributions_expected: Map<(felt252, felt252), felt252>; 
     }
 
     struct Group {
@@ -64,9 +64,8 @@ pub mod GroupSaving {
         assert(collected == 0, "Payout already collected for this round");
 
         self.payout_collected.write((group_id, current_round), 1);
-
-        // TODO: Implement actual fund transfer or marking withdrawal
-
+    
+    
         self.emit(PayoutCollected { group_id, round: current_round, recipient: member });
 
         if current_round == group.total_rounds {
