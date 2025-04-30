@@ -20,7 +20,7 @@ pub mod GroupSaving {
         contributions_received: Map<(felt252, felt252), felt252>; 
         payout_collected: Map<(felt252, felt252), felt252>; 
         payout_order: Map<(felt252, felt252), ContractAddress>; 
-        contributions_expected: Map<(felt252, felt252), felt252>; 
+        contributions_expected: Map<(felt252, felt252), felt252>;
     }
 
     struct Group {
@@ -65,7 +65,7 @@ pub mod GroupSaving {
 
         self.payout_collected.write((group_id, current_round), 1);
     
-    
+
         self.emit(PayoutCollected { group_id, round: current_round, recipient: member });
 
         if current_round == group.total_rounds {
