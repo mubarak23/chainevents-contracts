@@ -24,6 +24,14 @@ fn OWNER() -> ContractAddress {
     'owner'.try_into().unwrap()
 }
 
+fn OWNER() -> ContractAddress {
+    'owner'.try_into().unwrap()
+}
+
+fn RECIPIENT() -> ContractAddress {
+    'recipient'.try_into().unwrap()
+}
+
 // *************************************************************************
 //                              SETUP
 // *************************************************************************
@@ -425,7 +433,6 @@ fn test_open_event_registration_success() {
     let event_id = event_dispatcher.add_event("bitcoin dev meetup", "Dan Marna road");
     assert(event_id == 1, 'Event was not created');
 
-    let event_details = event_dispatcher.event_details(event_id);
     event_dispatcher.end_event_registration(event_id);
     event_dispatcher.open_event_registration(event_id);
     let event_details = event_dispatcher.event_details(event_id);

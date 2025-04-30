@@ -74,7 +74,6 @@ pub mod ChainEvents {
         RegisteredForEvent: RegisteredForEvent,
         EventAttendanceMark: EventAttendanceMark,
         UpgradedEvent: UpgradedEvent,
-        OpenEventRegistration: OpenEventRegistration,
         EndEventRegistration: EndEventRegistration,
         RSVPForEvent: RSVPForEvent,
         #[flat]
