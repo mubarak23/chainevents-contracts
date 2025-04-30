@@ -17,9 +17,9 @@ pub mod GroupSaving {
     #[storage]
     struct Storage {
         groups: Map<felt252, Group>;
-        contributions_received: Map<(felt252, felt252), felt252>; 
-        payout_collected: Map<(felt252, felt252), felt252>; 
-        payout_order: Map<(felt252, felt252), ContractAddress>; 
+        contributions_received: Map<(felt252, felt252), felt252>;
+        payout_collected: Map<(felt252, felt252), felt252>;
+        payout_order: Map<(felt252, felt252), ContractAddress>;
         contributions_expected: Map<(felt252, felt252), felt252>;
     }
 
