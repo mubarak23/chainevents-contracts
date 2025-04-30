@@ -1,26 +1,22 @@
 #[starknet::contract]
 pub mod GroupSaving {
-    use core::starknet::{
-        ContractAddress, get_caller_address,
-        storage::{Map},
-    };
+    use core::starknet::{ContractAddress, get_caller_address, storage::Map,};
     use core::num::traits::zero::Zero;
     use core::option::OptionTrait;
     use core::result::ResultTrait;
     use core::panic::Panic;
 
-    
     const STATUS_INACTIVE: felt252 = 0;
     const STATUS_ACTIVE: felt252 = 1;
     const STATUS_COMPLETED: felt252 = 2;
 
     #[storage]
     struct Storage {
-        groups: Map<felt252, Group>;
-        contributions_received: Map<(felt252, felt252), felt252>;
-        payout_collected: Map<(felt252, felt252), felt252>;
-        payout_order: Map<(felt252, felt252), ContractAddress>;
-        contributions_expected: Map<(felt252, felt252), felt252>;
+        groups: Map<felt252, Group>,
+        contributions_received: Map<(felt252, felt252), felt252>,
+        payout_collected: Map<(felt252, felt252), felt252>,
+        payout_order: Map<(felt252, felt252), ContractAddress>,
+        contributions_expected: Map<(felt252, felt252), felt252>,
     }
 
     struct Group {
@@ -64,27 +60,37 @@ pub mod GroupSaving {
         assert(collected == 0, "Payout already collected for this round");
 
         self.payout_collected.write((group_id, current_round), 1);
-    
 
-        self.emit(PayoutCollected { group_id, round: current_round, recipient: member });
+        self.emit(PayoutCollected { group_id, round: current_round, recipient: member, });
 
         if current_round == group.total_rounds {
-            self.groups.write(group_id, Group {
-                group_id,
-                status: STATUS_COMPLETED,
-                current_round,
-                total_rounds: group.total_rounds,
-                payout_order_len: group.payout_order_len,
-            });
+            self
+                .groups
+                .write(
+                    group_id,
+                    Group {
+                        group_id,
+                        status: STATUS_COMPLETED,
+                        current_round,
+                        total_rounds: group.total_rounds,
+                        payout_order_len: group.payout_order_len,
+                    }
+                );
+
             self.emit(GroupCompleted { group_id });
         } else {
-            self.groups.write(group_id, Group {
-                group_id,
-                status: STATUS_ACTIVE,
-                current_round: current_round + 1,
-                total_rounds: group.total_rounds,
-                payout_order_len: group.payout_order_len,
-            });
+            self
+                .groups
+                .write(
+                    group_id,
+                    Group {
+                        group_id,
+                        status: STATUS_ACTIVE,
+                        current_round: current_round + 1,
+                        total_rounds: group.total_rounds,
+                        payout_order_len: group.payout_order_len,
+                    }
+                );
         }
     }
 }
