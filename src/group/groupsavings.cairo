@@ -158,10 +158,12 @@ mod GroupSaving {
             self.group_counts.write(current_group_count + 1);
 
             // Store payout order as individual entries
-            for i in 0..payout_order.len() {
-                let index: u32 = i.try_into().unwrap();
-                self.group_payout_orders.write((group_id, index), *payout_order.at(i));
-            }
+            for i in 0
+                ..payout_order
+                    .len() {
+                        let index: u32 = i.try_into().unwrap();
+                        self.group_payout_orders.write((group_id, index), *payout_order.at(i));
+                    }
 
             // Initialize empty members list
             self.group_member_counts.write(group_id, 0);
@@ -223,10 +225,11 @@ mod GroupSaving {
 
             // Validate member is not already in the group
             let member_count = self.group_member_counts.read(group_id);
-            for i in 0..member_count {
-                let existing_member = self.group_members_list.read((group_id, i));
-                assert(existing_member != member, MEMBER_ALREADY_IN_GROUP);
-            }
+            for i in 0
+                ..member_count {
+                    let existing_member = self.group_members_list.read((group_id, i));
+                    assert(existing_member != member, MEMBER_ALREADY_IN_GROUP);
+                }
 
             // Add member to the group
             self.group_members_list.write((group_id, member_count), member);
@@ -285,13 +288,17 @@ mod GroupSaving {
     impl InternalImpl of InternalTrait {
         // validate to confirm no duplicate address
         fn _validate_unique_addresses(ref self: ContractState, addresses: Span<ContractAddress>) {
-            for i in 0..addresses.len() {
-                let addr1 = *addresses.at(i);
-                for j in i + 1..addresses.len() {
-                    let addr2 = *addresses.at(j);
-                    assert(addr1 != addr2, DUPLICATE_ADDRESS);
-                }
-            }
+            for i in 0
+                ..addresses
+                    .len() {
+                        let addr1 = *addresses.at(i);
+                        for j in i + 1
+                            ..addresses
+                                .len() {
+                                    let addr2 = *addresses.at(j);
+                                    assert(addr1 != addr2, DUPLICATE_ADDRESS);
+                                }
+                    }
         }
     }
 }

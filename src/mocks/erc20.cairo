@@ -25,7 +25,7 @@ pub mod MyToken {
 
     #[constructor]
     fn constructor(ref self: ContractState, // fixed_supply: u256,
-    recipient: ContractAddress) {
+     recipient: ContractAddress) {
         let name = "MyToken";
         let symbol = "MTK";
 
