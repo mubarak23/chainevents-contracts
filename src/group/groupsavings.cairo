@@ -1,9 +1,10 @@
 #[starknet::contract]
-mod GroupSaving {
+pub mod GroupSaving {
     use chainevents_contracts::base::errors::Errors::{
-        DUPLICATE_ADDRESS, GROUP_FULL, GROUP_ID_EXISTS, GROUP_NOT_ACCEPTING_MEMBERS,
-        GROUP_NOT_FOUND, INVALID_CONTRIBUTION, INVALID_DURATION, INVALID_MAX_MEMBERS,
-        MEMBER_ALREADY_IN_GROUP, PAYOUT_ORDER_MISMATCH,
+        DUPLICATE_ADDRESS, GROUP_ACTIVE, GROUP_FULL, GROUP_ID_EXISTS, GROUP_NOT_ACCEPTING_MEMBERS,
+        GROUP_NOT_FOUND, GROUP_NOT_FULL, GROUP_ROUNDS_COMPLETED, INVALID_CONTRIBUTION,
+        INVALID_DURATION, INVALID_MAX_MEMBERS, MEMBER_ALREADY_IN_GROUP, NOT_CREATOR,
+        PAYOUT_ORDER_MISMATCH,
     };
     use chainevents_contracts::base::types::Group;
     use chainevents_contracts::interfaces::IGroupSaving::IGroupSaving;
@@ -90,10 +91,16 @@ mod GroupSaving {
     #[derive(Drop, starknet::Event)]
     pub enum Event {
         GroupCreated: GroupCreated,
+        CycleStarted: CycleStarted,
         #[flat]
         OwnableEvent: OwnableComponent::Event,
         #[flat]
         UpgradeableEvent: UpgradeableComponent::Event,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct CycleStarted {
+        pub group_id: felt252,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -196,19 +203,49 @@ mod GroupSaving {
 
         fn start_cycle(ref self: ContractState, group_id: felt252) {
             // Validate group exists
-            assert(self.group_ids.read(group_id), 'Group Not Found');
+            assert(self.group_ids.read(group_id), GROUP_NOT_FOUND);
+
+            // Prevent the cycle from being started more than once
+            // Validate group is not already active
+            assert(!self.group_is_active.read(group_id), GROUP_ACTIVE);
+
+            // Validate group is not completed
+            assert(!self.group_is_completed.read(group_id), GROUP_ROUNDS_COMPLETED);
+
+            // Get group details
+            let group = self.groups.read(group_id);
+
+            // Validate caller is group creator
+            let caller = get_caller_address();
+            assert(caller == group.creator, NOT_CREATOR);
 
             // Validate group is full
-            assert(self.group_is_full.read(group_id), 'Group Is Not Full');
+            assert(self.group_is_full.read(group_id), GROUP_NOT_FULL);
 
-            // Validate group is not already active
-            assert(!self.group_is_active.read(group_id), 'Group Is Already Active');
-
-            // Set group as active
+            // Transition group to active state
             self.group_is_active.write(group_id, true);
 
-            // Set current round to 1
+            // Initialize first round
             self.group_current_round.write(group_id, 1);
+
+            // Initialize payout index
+            self.group_next_payout_index.write(group_id, 0);
+
+            // Initialize all members' contributions for the first round
+            let member_count = self.group_member_counts.read(group_id);
+            for i in 0..member_count {
+                let member = self.group_members_list.read((group_id, i));
+                self.member_contribution.write((member, group_id), 0);
+                self.member_last_contributed_round.write((member, group_id), 0);
+                self.member_payout_status.write((member, group_id), false);
+            }
+
+            // Emit event for cycle start
+            self.emit(Event::CycleStarted(CycleStarted { group_id }));
+        }
+
+        fn is_group_active(self: @ContractState, group_id: felt252) -> bool {
+            self.group_is_active.read(group_id)
         }
 
         fn join_group(ref self: ContractState, group_id: felt252, member: ContractAddress) {

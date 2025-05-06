@@ -24,4 +24,9 @@ pub mod Errors {
     pub const GROUP_NOT_ACCEPTING_MEMBERS: felt252 = 'Group Not Accepting Members';
     pub const MEMBER_ALREADY_IN_GROUP: felt252 = 'Member Already In Group';
     pub const GROUP_FULL: felt252 = 'Group Is Full';
+
+    pub const NOT_CREATOR: felt252 = 'Caller Is Not Group Creator';
+    pub const GROUP_ACTIVE: felt252 = 'Group Is Already Active';
+    pub const GROUP_NOT_FULL: felt252 = 'Group Is Not Yet Full';
+    pub const GROUP_ROUNDS_COMPLETED: felt252 = 'Group RoundS Already Completed';
 }
