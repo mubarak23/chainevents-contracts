@@ -1,4 +1,6 @@
 use chainevents_contracts::base::types::Group;
+use chainevents_contracts::group::groupsavings::GroupSaving;
+use chainevents_contracts::group::groupsavings::GroupSaving::CycleStarted;
 use chainevents_contracts::interfaces::IGroupSaving::{
     IGroupSavingDispatcher, IGroupSavingDispatcherTrait,
 };
@@ -6,8 +8,8 @@ use core::array::ArrayTrait;
 use core::felt252;
 use core::traits::Into;
 use snforge_std::{
-    ContractClassTrait, DeclareResultTrait, declare, start_cheat_caller_address,
-    stop_cheat_caller_address, store,
+    ContractClassTrait, DeclareResultTrait, EventSpyAssertionsTrait, EventSpyTrait, declare,
+    spy_events, start_cheat_caller_address, stop_cheat_caller_address, store,
 };
 use starknet::{
     ClassHash, ContractAddress, get_block_timestamp, get_caller_address, get_contract_address,
@@ -152,6 +154,7 @@ fn test_get_current_round_active_group() {
     contract.join_group(group_id, member3);
 
     // Start the cycle
+    start_cheat_caller_address(contract.contract_address, creator);
     contract.start_cycle(group_id);
 
     // Test
@@ -295,4 +298,113 @@ fn test_get_group_members_duplicate_member() {
 
     // Try to add member1 again (should panic)
     contract.join_group(group_id, member1);
+}
+
+#[test]
+fn test_start_cycle_success() {
+    let contract = contract();
+    let group_id = 'test_group';
+    let max_members = 3;
+    let payout_order = array![member1, member2, member3];
+
+    // Create group
+    contract.create_group(group_id, creator, max_members, 100, 30, payout_order);
+
+    // Add all members to make the group full
+    contract.join_group(group_id, member1);
+    contract.join_group(group_id, member2);
+    contract.join_group(group_id, member3);
+
+    // Spy on events before action
+    let mut spy = spy_events();
+
+    // Test - start cycle
+    start_cheat_caller_address(contract.contract_address, creator);
+    contract.start_cycle(group_id);
+
+    // Verify event
+    let expected_event = GroupSaving::Event::CycleStarted(CycleStarted { group_id });
+
+    spy.assert_emitted(@array![(contract.contract_address, expected_event)]);
+
+    // Verify
+    assert(contract.is_group_active(group_id), 'Group should be active');
+    assert(contract.get_current_round(group_id) == 1, 'Current round should be 1');
+    stop_cheat_caller_address(contract.contract_address);
+}
+
+#[test]
+#[should_panic(expected: ('Group Not Found',))]
+fn test_start_cycle_non_existent_group() {
+    let contract = contract();
+    contract.start_cycle('non_existent');
+}
+
+// #[test]
+// #[should_panic(expected: ('Group RoundS Already Completed',))]
+// fn test_start_cycle_already_completed_group() {
+//     let contract = contract();
+//     let group_id = 'completed_group';
+//     let payout_order = array![member1, member2];
+
+//     // Setup - create group and join members
+//     contract.create_group(group_id, creator, 2, 100, 30, payout_order);
+//     contract.join_group(group_id, member1);
+//     contract.join_group(group_id, member2);
+
+//     // Manually mark group as completed (would normally happen after all rounds)
+//     // This is a workaround for the test since we don't have a real cycle completion logic
+//     start_cheat_caller_address(contract.contract_address, creator);
+//     contract.mark_group_completed_for_testing(group_id);
+
+//     // Attempt to start cycle
+//     contract.start_cycle(group_id);
+//     stop_cheat_caller_address(creator);
+// }
+
+#[test]
+#[should_panic(expected: ('Group Is Not Yet Full',))]
+fn test_start_cycle_not_full() {
+    let contract = contract();
+    let group_id = 'test_group';
+    let payout_order = array![member1, member2, member3];
+
+    contract.create_group(group_id, creator, 3, 100, 30, payout_order);
+
+    // Don't join all members
+    contract.join_group(group_id, member1);
+    contract.join_group(group_id, member2);
+
+    start_cheat_caller_address(contract.contract_address, creator);
+    contract.start_cycle(group_id);
+    stop_cheat_caller_address(contract.contract_address);
+}
+
+#[test]
+#[should_panic(expected: ('Group Is Already Active',))]
+fn test_start_cycle_already_active() {
+    let contract = contract();
+    let group_id = 'test_group';
+
+    contract.create_group(group_id, creator, 2, 100, 30, array![member1, member2]);
+    contract.join_group(group_id, member1);
+    contract.join_group(group_id, member2);
+
+    start_cheat_caller_address(contract.contract_address, creator);
+    contract.start_cycle(group_id);
+    // Try to start again
+    contract.start_cycle(group_id);
+    stop_cheat_caller_address(contract.contract_address);
+}
+
+#[test]
+#[should_panic(expected: ('Caller Is Not Group Creator',))]
+fn test_start_cycle_non_creator() {
+    let contract = contract();
+    let group_id = 'test_group';
+    contract.create_group(group_id, creator, 2, 100, 30, array![member1, member2]);
+    contract.join_group(group_id, member1);
+    contract.join_group(group_id, member2);
+
+    contract.start_cycle(group_id);
 }

@@ -33,4 +33,5 @@ pub trait IGroupSaving<TContractState> {
     fn get_current_round(self: @TContractState, group_id: felt252) -> u32;
     fn is_group_full(self: @TContractState, group_id: felt252) -> bool;
     fn get_group_members(self: @TContractState, group_id: felt252) -> Array<ContractAddress>;
+    fn is_group_active(self: @TContractState, group_id: felt252) -> bool;
 }
