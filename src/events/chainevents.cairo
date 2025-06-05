@@ -8,7 +8,7 @@ pub mod ChainEvents {
     use chainevents_contracts::base::errors::Errors::{
         ZERO_ADDRESS_CALLER, NOT_OWNER, CLOSED_EVENT, ALREADY_REGISTERED, NOT_REGISTERED,
         ALREADY_RSVP, INVALID_EVENT, EVENT_NOT_CLOSED, EVENT_CLOSED, TRANSFER_FAILED,
-        NOT_A_PAID_EVENT, PAYMENT_TOKEN_NOT_SET, EVENT_IS_FULL,
+        NOT_A_PAID_EVENT, PAYMENT_TOKEN_NOT_SET, EVENT_IS_FULL, INVALID_CAPACITY,
     };
     use chainevents_contracts::interfaces::IEvent::IEvent;
     use core::starknet::{
@@ -76,6 +76,7 @@ pub mod ChainEvents {
         OpenEventRegistration: OpenEventRegistration,
         EndEventRegistration: EndEventRegistration,
         RSVPForEvent: RSVPForEvent,
+        EventCapacityUpdated: EventCapacityUpdated,
         #[flat]
         OwnableEvent: OwnableComponent::Event,
         #[flat]
@@ -155,6 +156,12 @@ pub mod ChainEvents {
     }
 
     #[derive(Drop, starknet::Event)]
+    pub struct EventCapacityUpdated {
+        pub event_id: u256,
+        pub new_max_capacity: u256,
+    }
+
+    #[derive(Drop, starknet::Event)]
     pub struct WithdrawalMade {
         pub event_id: u256,
         pub event_organizer: ContractAddress,
@@ -195,6 +202,30 @@ pub mod ChainEvents {
                     },
                 );
             event_id
+        }
+        /// @notice Updates the maximum capacity of an event
+        /// @param event_id The ID of the event to update
+        /// @param max_capacity The new maximum capacity for the event
+        /// @dev Only callable by the event owner
+        /// reverts if the event is not closed or if the new capacity is invalid
+        /// reverts if the new capacity is less than or equal to the current attendees
+        fn update_event_max_capacity(ref self: ContractState, event_id: u256, max_capacity: u256,) {
+            let caller = get_caller_address();
+            let event_owner = self.event_owners.read(event_id);
+            assert(caller == event_owner, NOT_OWNER);
+            let mut event_details = self.event_details.read(event_id);
+            // Ensure the event is closed before updating capacity
+            assert(event_details.is_closed, EVENT_NOT_CLOSED);
+            // Ensure the new capacity is greater than 0 and greater than current attendees
+            assert(max_capacity > 0, INVALID_CAPACITY);
+            assert(max_capacity > event_details.total_attendees, INVALID_CAPACITY);
+            event_details.max_capacity = max_capacity;
+            self.event_details.write(event_id, event_details);
+            // Emit event for the indexers
+            self
+                .emit(
+                    EventCapacityUpdated { event_id: event_id, new_max_capacity: max_capacity, },
+                );
         }
 
         /// @notice Registers a user for an event

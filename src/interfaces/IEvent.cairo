@@ -7,6 +7,9 @@ use core::starknet::{ContractAddress, ClassHash};
 pub trait IEvent<TContractState> {
     // EXTERNAL FUNCTION
     fn add_event(ref self: TContractState, name: ByteArray, location: ByteArray) -> u256;
+    fn update_event_max_capacity(
+        ref self: TContractState, event_id: u256, max_capacity: u256,
+    ); // only owner can update max capacity
     fn register_for_event(ref self: TContractState, event_id: u256);
     fn open_event_registration(
         ref self: TContractState, event_id: u256,

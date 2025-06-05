@@ -19,4 +19,5 @@ pub mod Errors {
     pub const TRANSFER_FAILED: felt252 = 'Transfer Failed';
     pub const PAYMENT_TOKEN_NOT_SET: felt252 = 'Payment Token Not Set';
     pub const EVENT_IS_FULL: felt252 = 'Event is full';
+    pub const INVALID_CAPACITY: felt252 = 'Invalid capacity';
 }
