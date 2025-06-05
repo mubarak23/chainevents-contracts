@@ -8,7 +8,8 @@ pub mod ChainEvents {
     use chainevents_contracts::base::errors::Errors::{
         ZERO_ADDRESS_CALLER, NOT_OWNER, CLOSED_EVENT, ALREADY_REGISTERED, NOT_REGISTERED,
         ALREADY_RSVP, INVALID_EVENT, EVENT_NOT_CLOSED, EVENT_CLOSED, TRANSFER_FAILED,
-        NOT_A_PAID_EVENT, PAYMENT_TOKEN_NOT_SET, EVENT_IS_FULL, INVALID_CAPACITY,
+        NOT_A_PAID_EVENT, PAYMENT_TOKEN_NOT_SET, EVENT_IS_FULL, INVALID_CAPACITY, EVENT_IS_NOT_FULL,
+        ALREADY_JOINED_WAITLIST
     };
     use chainevents_contracts::interfaces::IEvent::IEvent;
     use core::starknet::{
@@ -63,6 +64,8 @@ pub mod ChainEvents {
         paid_events_amount: Map<u256, u256>, // map<event_id, total_amount>
         paid_event_ticket_count: Map<u256, u256>, // map<event_id, count_number_of_ticket>
         event_payment_token: ContractAddress,
+        waitlist: Map<u256, Array<ContractAddress>>, // event_id -> waitlist addresses
+        joined_waitlist: Map<(u256, ContractAddress), bool>, // (event_id, user_address) -> bool
     }
 
     /// @notice Events emitted by the contract
@@ -77,6 +80,7 @@ pub mod ChainEvents {
         EndEventRegistration: EndEventRegistration,
         RSVPForEvent: RSVPForEvent,
         EventCapacityUpdated: EventCapacityUpdated,
+        JoinEventWaitlist: JoinEventWaitlist,
         #[flat]
         OwnableEvent: OwnableComponent::Event,
         #[flat]
@@ -124,6 +128,13 @@ pub mod ChainEvents {
     pub struct RSVPForEvent {
         pub event_id: u256,
         pub attendee_address: ContractAddress,
+    }
+
+    /// @notice Event emitted when a user joins the waitlist for an event
+    #[derive(Drop, starknet::Event)]
+    pub struct JoinEventWaitlist {
+        pub event_id: u256,
+        pub user_address: ContractAddress,
     }
 
     /// @notice Event emitted when an event is upgraded (e.g., from free to paid)
@@ -286,6 +297,33 @@ pub mod ChainEvents {
             self._rsvp_for_event(event_id.clone(), caller.clone());
 
             self.emit(RSVPForEvent { event_id, attendee_address: caller });
+        }
+
+        fn join_event_waitlist(ref self: ContractState, event_id: u256,) {
+            let caller = get_caller_address();
+            assert(caller.is_non_zero(), ZERO_ADDRESS_CALLER);
+            let event_details = self.event_details.read(event_id);
+            assert(!event_details.is_closed, CLOSED_EVENT);
+            assert(event_details.max_capacity <= event_details.total_attendees, EVENT_IS_NOT_FULL);
+
+            // Check that user has not already registered for the event
+            let _attendee_registration = self.attendee_event_details.read((event_id, caller));
+            assert(!_attendee_registration.has_rsvp, ALREADY_REGISTERED);
+
+            // Check if the user is already on the waitlist
+            let already_joined = self.joined_waitlist.read((event_id, caller));
+            assert(!already_joined, ALREADY_JOINED_WAITLIST);
+
+            // Add user to the waitlist
+            let mut waitlist = self.waitlist.read(event_id);
+            waitlist.append(caller.clone());
+            self.waitlist.write(event_id, waitlist);
+
+            // Update the user's waitlist status
+            self.joined_waitlist.write((event_id, caller), true);
+
+            //Emit event for the indexers
+            self.emit(JoinEventWaitlist { event_id, user_address: caller });
         }
 
         /// @notice Upgrades an event from free to paid
@@ -454,6 +492,11 @@ pub mod ChainEvents {
         fn fetch_all_unpaid_events(self: @ContractState) -> Array<EventDetails> {
             self._fetch_all_unpaid_events()
         }
+
+        fn get_waitlist(self: @ContractState, event_id: u256,) -> Array<ContractAddress> {
+            let waitlist = self.waitlist.read(event_id);
+            waitlist
+        }
     }
 
     #[generate_trait]
@@ -583,6 +626,18 @@ pub mod ChainEvents {
             self.registered_attendees.write(event_id, self.registered_attendees.read(event_id) - 1);
             let current_count = self.attendee_event_registration_counts.read(event_id);
             self.attendee_event_registration_counts.write(event_id, current_count - 1);
+
+            // Add an attendee from the waitlist to the event
+            let mut waitlist = self.waitlist.read(event_id);
+
+            if len(waitlist) > 0 {
+                let next_attendee = waitlist.pop_front().unwrap();
+                self.joined_waitlist.write((event_id, next_attendee), false);
+                // Register the next attendee for the event
+                self._register_for_event(next_attendee, event_id);
+                // Update the waitlist
+                self.waitlist.write(event_id, waitlist);
+            }
         }
 
         fn _rsvp_for_event(ref self: ContractState, event_id: u256, caller: ContractAddress) {

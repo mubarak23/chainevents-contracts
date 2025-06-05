@@ -20,4 +20,6 @@ pub mod Errors {
     pub const PAYMENT_TOKEN_NOT_SET: felt252 = 'Payment Token Not Set';
     pub const EVENT_IS_FULL: felt252 = 'Event is full';
     pub const INVALID_CAPACITY: felt252 = 'Invalid capacity';
+    pub const EVENT_IS_NOT_FULL: felt252 = 'Event is not full';
+    pub const ALREADY_JOINED_WAITLIST: felt252 = 'Already joined waitlist';
 }

@@ -22,6 +22,7 @@ pub trait IEvent<TContractState> {
     fn unregister_from_event(ref self: TContractState, event_id: u256);
     fn pay_for_event(ref self: TContractState, event_id: u256);
     fn withdraw_paid_event_amount(ref self: TContractState, event_id: u256);
+    fn join_event_waitlist(ref self: TContractState, event_id: u256);
 
     // GETTER FUNCTION
     fn event_details(self: @TContractState, event_id: u256) -> EventDetails;
@@ -43,6 +44,7 @@ pub trait IEvent<TContractState> {
     fn get_closed_events(self: @TContractState) -> Array<EventDetails>;
     fn fetch_all_paid_events(self: @TContractState) -> Array<EventDetails>;
     fn fetch_all_unpaid_events(self: @TContractState) -> Array<EventDetails>;
+    fn get_waitlist(self: @TContractState, event_id: u256,) -> Array<ContractAddress>;
 
     fn upgrade(ref self: TContractState, new_class_hash: ClassHash);
 }
