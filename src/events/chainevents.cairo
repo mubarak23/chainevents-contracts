@@ -15,7 +15,10 @@ pub mod ChainEvents {
     use core::starknet::{
         ContractAddress, get_caller_address, syscalls::deploy_syscall, ClassHash,
         get_block_timestamp, get_contract_address, contract_address_const,
-        storage::{Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePathEntry},
+        storage::{
+            Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePathEntry, Vec,
+            MutableVecTrait, VecTrait, StoragePointerReadAccess, StoragePointerWriteAccess
+        },
     };
     use openzeppelin::access::ownable::OwnableComponent;
     use openzeppelin_upgrades::UpgradeableComponent;
@@ -64,7 +67,8 @@ pub mod ChainEvents {
         paid_events_amount: Map<u256, u256>, // map<event_id, total_amount>
         paid_event_ticket_count: Map<u256, u256>, // map<event_id, count_number_of_ticket>
         event_payment_token: ContractAddress,
-        waitlist: Map<u256, Array<ContractAddress>>, // event_id -> waitlist addresses
+        waitlist: Map<u256, Vec<ContractAddress>>, // event_id -> waitlist addresses
+        waitlist_position: Map<u256, u64>, // event_id -> waitlist position
         joined_waitlist: Map<(u256, ContractAddress), bool>, // (event_id, user_address) -> bool
     }
 
@@ -315,9 +319,7 @@ pub mod ChainEvents {
             assert(!already_joined, ALREADY_JOINED_WAITLIST);
 
             // Add user to the waitlist
-            let mut waitlist = self.waitlist.read(event_id);
-            waitlist.append(caller.clone());
-            self.waitlist.write(event_id, waitlist);
+            self.waitlist.entry(event_id).append().write(caller);
 
             // Update the user's waitlist status
             self.joined_waitlist.write((event_id, caller), true);
@@ -493,9 +495,19 @@ pub mod ChainEvents {
             self._fetch_all_unpaid_events()
         }
 
-        fn get_waitlist(self: @ContractState, event_id: u256,) -> Array<ContractAddress> {
-            let waitlist = self.waitlist.read(event_id);
-            waitlist
+        /// @notice Gets the waitlist for an event
+        /// @param event_id The ID of the event to query
+        /// @return Array of addresses on the waitlist
+        /// @dev Returns an array of contract addresses representing users on the waitlist
+        fn get_waitlist(self: @ContractState, event_id: u256) -> Array<ContractAddress> {
+            let mut waitlist_addresses: Array<ContractAddress> = array![];
+            let waitlist = self.waitlist.entry(event_id);
+            let waitlist_position = self.waitlist_position.read(event_id);
+            for i in waitlist_position
+                ..waitlist.len() {
+                    waitlist_addresses.append(waitlist.at(i).read());
+                };
+            waitlist_addresses
         }
     }
 
@@ -628,15 +640,21 @@ pub mod ChainEvents {
             self.attendee_event_registration_counts.write(event_id, current_count - 1);
 
             // Add an attendee from the waitlist to the event
-            let mut waitlist = self.waitlist.read(event_id);
+            let waitlist = self.waitlist.entry(event_id);
 
-            if len(waitlist) > 0 {
-                let next_attendee = waitlist.pop_front().unwrap();
-                self.joined_waitlist.write((event_id, next_attendee), false);
-                // Register the next attendee for the event
-                self._register_for_event(next_attendee, event_id);
-                // Update the waitlist
-                self.waitlist.write(event_id, waitlist);
+            if waitlist.len() > 0 {
+                let next_attendee_index = self.waitlist_position.read(event_id);
+                // Check if the next attendee index is within bounds
+                if next_attendee_index < waitlist.len() {
+                    // Get the next attendee from the waitlist
+                    let next_attendee = waitlist.at(next_attendee_index).read();
+                    // Update the waitlist position
+                    self.waitlist_position.write(event_id, next_attendee_index + 1);
+                    // Mark the user as joined the waitlist
+                    self.joined_waitlist.write((event_id, next_attendee), false);
+                    // Register the next attendee for the event
+                    self._register_for_event(next_attendee, event_id);
+                }
             }
         }
 
