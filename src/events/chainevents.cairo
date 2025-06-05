@@ -8,7 +8,7 @@ pub mod ChainEvents {
     use chainevents_contracts::base::errors::Errors::{
         ZERO_ADDRESS_CALLER, NOT_OWNER, CLOSED_EVENT, ALREADY_REGISTERED, NOT_REGISTERED,
         ALREADY_RSVP, INVALID_EVENT, EVENT_NOT_CLOSED, EVENT_CLOSED, TRANSFER_FAILED,
-        NOT_A_PAID_EVENT, PAYMENT_TOKEN_NOT_SET,
+        NOT_A_PAID_EVENT, PAYMENT_TOKEN_NOT_SET, EVENT_IS_FULL,
     };
     use chainevents_contracts::interfaces::IEvent::IEvent;
     use core::starknet::{
@@ -29,6 +29,8 @@ pub mod ChainEvents {
     impl OwnableInternalImpl = OwnableComponent::InternalImpl<ContractState>;
 
     impl UpgradeableInternalImpl = UpgradeableComponent::InternalImpl<ContractState>;
+
+    const DEFAULT_EVENT_MAX_CAPACITY: u256 = 100000;
 
     /// @notice Contract storage structure
     /// @dev Contains mappings for event management and tracking
@@ -470,6 +472,7 @@ pub mod ChainEvents {
                 event_type: EventType::Free,
                 is_closed: false,
                 paid_amount: 0,
+                max_capacity: DEFAULT_EVENT_MAX_CAPACITY,
             };
 
             // save the event details
@@ -493,6 +496,7 @@ pub mod ChainEvents {
             assert(!_attendee_registration.has_rsvp, ALREADY_REGISTERED);
 
             assert(!_event.is_closed, CLOSED_EVENT);
+            assert(_event.max_capacity > _event.total_attendees, EVENT_IS_FULL);
 
             let _attendee_event_details = EventRegistration {
                 attendee_address: caller,
