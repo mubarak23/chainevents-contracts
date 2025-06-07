@@ -22,4 +22,7 @@ pub mod Errors {
     pub const INVALID_CAPACITY: felt252 = 'Invalid capacity';
     pub const EVENT_IS_NOT_FULL: felt252 = 'Event is not full';
     pub const ALREADY_JOINED_WAITLIST: felt252 = 'Already joined waitlist';
+    pub const ALREADY_ATTENDED: felt252 = 'Already marked attendance';
+    pub const NOT_AUTHORIZED: felt252 = 'Not authorized';
+    pub const ATTENDANCE_NOT_MARKED: felt252 = 'Attendance not marked';
 }

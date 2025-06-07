@@ -46,5 +46,7 @@ pub trait IEvent<TContractState> {
     fn fetch_all_unpaid_events(self: @TContractState) -> Array<EventDetails>;
     fn get_waitlist(self: @TContractState, event_id: u256,) -> Array<ContractAddress>;
 
+    fn mark_attendance(ref self: TContractState, event_id: u256, attendee: ContractAddress);
+
     fn upgrade(ref self: TContractState, new_class_hash: ClassHash);
 }
