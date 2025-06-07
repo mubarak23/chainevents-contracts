@@ -14,6 +14,7 @@ pub struct EventDetails {
     pub event_type: EventType,
     pub is_closed: bool,
     pub paid_amount: u256,
+    pub max_capacity: u256,
 }
 
 /// @title Event Registration Structure
