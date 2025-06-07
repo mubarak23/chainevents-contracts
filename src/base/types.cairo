@@ -28,6 +28,8 @@ pub struct EventRegistration {
     pub nft_contract_address: ContractAddress,
     pub nft_token_id: u256,
     pub organizer: ContractAddress,
+    pub has_attended: bool,
+    pub attendance_timestamp: u64,
 }
 
 

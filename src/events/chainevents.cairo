@@ -9,9 +9,12 @@ pub mod ChainEvents {
         ZERO_ADDRESS_CALLER, NOT_OWNER, CLOSED_EVENT, ALREADY_REGISTERED, NOT_REGISTERED,
         ALREADY_RSVP, INVALID_EVENT, EVENT_NOT_CLOSED, EVENT_CLOSED, TRANSFER_FAILED,
         NOT_A_PAID_EVENT, PAYMENT_TOKEN_NOT_SET, EVENT_IS_FULL, INVALID_CAPACITY, EVENT_IS_NOT_FULL,
-        ALREADY_JOINED_WAITLIST
+        ALREADY_JOINED_WAITLIST, ALREADY_ATTENDED, NOT_AUTHORIZED
     };
     use chainevents_contracts::interfaces::IEvent::IEvent;
+    use chainevents_contracts::interfaces::IEventNFT::{
+        IEventNFTDispatcher, IEventNFTDispatcherTrait
+    };
     use core::starknet::{
         ContractAddress, get_caller_address, syscalls::deploy_syscall, ClassHash,
         get_block_timestamp, get_contract_address, contract_address_const,
@@ -70,6 +73,11 @@ pub mod ChainEvents {
         waitlist: Map<u256, Vec<ContractAddress>>, // event_id -> waitlist addresses
         waitlist_position: Map<u256, u64>, // event_id -> waitlist position
         joined_waitlist: Map<(u256, ContractAddress), bool>, // (event_id, user_address) -> bool
+        event_nft_contracts: Map<u256, ContractAddress>, // event_id -> nft_contract_address
+        attendance_marked: Map<
+            (u256, ContractAddress), bool
+        >, // (event_id, attendee) -> has_attended
+        event_nft_classhash: ClassHash, // NFT contract class hash for deployment
     }
 
     /// @notice Events emitted by the contract
@@ -186,11 +194,15 @@ pub mod ChainEvents {
     /// @dev Sets the initial event count to 0
     #[constructor]
     fn constructor(
-        ref self: ContractState, owner: ContractAddress, payment_token_address: ContractAddress,
+        ref self: ContractState,
+        owner: ContractAddress,
+        payment_token_address: ContractAddress,
+        event_nft_classhash: ClassHash,
     ) {
         self.event_counts.write(0);
         self.ownable.initializer(owner);
         self.event_payment_token.write(payment_token_address);
+        self.event_nft_classhash.write(event_nft_classhash);
     }
 
     #[abi(embed_v0)]
@@ -509,6 +521,40 @@ pub mod ChainEvents {
                 };
             waitlist_addresses
         }
+
+        /// @notice Marks attendance for an event attendee and mints their NFT
+        /// @param event_id The ID of the event
+        /// @param attendee The address of the attendee
+        /// @dev Only callable by event owner, attendee must be registered
+        fn mark_attendance(ref self: ContractState, event_id: u256, attendee: ContractAddress) {
+            // Verify caller is event owner
+            let caller = get_caller_address();
+            let event_owner = self.event_owners.read(event_id);
+            assert(caller == event_owner, NOT_AUTHORIZED);
+
+            // Verify attendee is registered
+            let mut attendee_registration = self.attendee_event_details.read((event_id, attendee));
+            assert(attendee_registration.attendee_address == attendee, NOT_REGISTERED);
+            assert(!attendee_registration.has_attended, ALREADY_ATTENDED);
+
+            // Mark attendance and update NFT details
+            let mut updated_registration = attendee_registration.clone();
+            updated_registration.has_attended = true;
+            updated_registration.attendance_timestamp = get_block_timestamp();
+
+            // Mint NFT for attendance
+            let nft_contract = self.event_nft_contracts.read(event_id);
+            let nft = IEventNFTDispatcher { contract_address: nft_contract };
+            let token_id = nft.mint_nft(attendee);
+
+            // Update registration with NFT details
+            updated_registration.nft_token_id = token_id;
+            self.attendee_event_details.write((event_id, attendee), updated_registration);
+            self.attendance_marked.write((event_id, attendee), true);
+
+            // Emit event
+            self.emit(EventAttendanceMark { event_id, user_address: attendee });
+        }
     }
 
     #[generate_trait]
@@ -564,8 +610,12 @@ pub mod ChainEvents {
             // save the event details
             self.event_details.write(event_id, event_details);
 
-            // save event owner
+            // Deploy NFT contract for the event
+            let nft_contract = self.deploy_event_nft(self.event_nft_classhash.read(), event_id);
+
+            // save event owner and NFT contract
             self.event_owners.write(event_id, event_owner);
+            self.event_nft_contracts.write(event_id, nft_contract);
 
             event_id
         }
@@ -584,13 +634,16 @@ pub mod ChainEvents {
             assert(!_event.is_closed, CLOSED_EVENT);
             assert(_event.max_capacity > _event.total_attendees, EVENT_IS_FULL);
 
+            let nft_contract = self.event_nft_contracts.read(event_id);
             let _attendee_event_details = EventRegistration {
                 attendee_address: caller,
                 amount_paid: 0,
                 has_rsvp: false,
-                nft_contract_address: caller, // nft contract address needed
+                nft_contract_address: nft_contract,
                 nft_token_id: 0,
                 organizer: _event.organizer,
+                has_attended: false,
+                attendance_timestamp: 0,
             };
 
             self.attendee_event_details.write((event_id, caller), _attendee_event_details);
@@ -630,6 +683,8 @@ pub mod ChainEvents {
                         nft_contract_address: zero_address,
                         nft_token_id: 0,
                         organizer: zero_address,
+                        has_attended: false,
+                        attendance_timestamp: 0,
                     },
                 );
 

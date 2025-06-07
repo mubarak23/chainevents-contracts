@@ -34,12 +34,17 @@ fn __setup__(strk_token: ContractAddress) -> ContractAddress {
     // deploy  events
     let events_class_hash = declare("ChainEvents").unwrap().contract_class();
 
+    // Declare the NFT contract to get a valid class hash
+    let nft_contract = declare("EventNFT").unwrap().contract_class();
+    let nft_class_hash = nft_contract.class_hash;
+
     let mut events_constructor_calldata: Array<felt252> = array![];
 
     let owner = OWNER();
 
     owner.serialize(ref events_constructor_calldata);
     strk_token.serialize(ref events_constructor_calldata);
+    nft_class_hash.serialize(ref events_constructor_calldata);
 
     let (event_contract_address, _) = events_class_hash
         .deploy(@events_constructor_calldata)
@@ -92,8 +97,10 @@ fn test_event_registration() {
         attendee_registration_details.attendee_address == user_two_address,
         'attendee_address mismatch',
     );
+    // NFT contract address should not be zero when registered
     assert(
-        attendee_registration_details.nft_contract_address == user_two_address,
+        attendee_registration_details
+            .nft_contract_address != starknet::contract_address_const::<0>(),
         'nft_contract_address mismatch',
     );
     assert(attendee_registration_details.nft_token_id == 0, 'nft_token_id mismatch');
@@ -139,12 +146,15 @@ fn test_registration_to_multiple_events() {
         attendee_registration_details_2.attendee_address == user_two_address,
         'E2: attendee_address mismatch',
     );
+    // NFT contract addresses should not be zero when registered
     assert(
-        attendee_registration_details_1.nft_contract_address == user_two_address,
+        attendee_registration_details_1
+            .nft_contract_address != starknet::contract_address_const::<0>(),
         'E1nft_contract_address mismatch',
     );
     assert(
-        attendee_registration_details_2.nft_contract_address == user_two_address,
+        attendee_registration_details_2
+            .nft_contract_address != starknet::contract_address_const::<0>(),
         'E2nft_contract_address mismatch',
     );
     assert(attendee_registration_details_1.nft_token_id == 0, 'E1: nft_token_id mismatch');
