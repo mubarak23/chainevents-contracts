@@ -12,7 +12,9 @@ pub mod ChainEvents {
         ALREADY_JOINED_WAITLIST, ALREADY_ATTENDED, NOT_AUTHORIZED
     };
     use chainevents_contracts::interfaces::IEvent::IEvent;
-    use chainevents_contracts::interfaces::IEventNFT::{IEventNFTDispatcher, IEventNFTDispatcherTrait};
+    use chainevents_contracts::interfaces::IEventNFT::{
+        IEventNFTDispatcher, IEventNFTDispatcherTrait
+    };
     use core::starknet::{
         ContractAddress, get_caller_address, syscalls::deploy_syscall, ClassHash,
         get_block_timestamp, get_contract_address, contract_address_const,
@@ -72,7 +74,9 @@ pub mod ChainEvents {
         waitlist_position: Map<u256, u64>, // event_id -> waitlist position
         joined_waitlist: Map<(u256, ContractAddress), bool>, // (event_id, user_address) -> bool
         event_nft_contracts: Map<u256, ContractAddress>, // event_id -> nft_contract_address
-        attendance_marked: Map<(u256, ContractAddress), bool>, // (event_id, attendee) -> has_attended
+        attendance_marked: Map<
+            (u256, ContractAddress), bool
+        >, // (event_id, attendee) -> has_attended
         event_nft_classhash: ClassHash, // NFT contract class hash for deployment
     }
 
@@ -190,8 +194,8 @@ pub mod ChainEvents {
     /// @dev Sets the initial event count to 0
     #[constructor]
     fn constructor(
-        ref self: ContractState, 
-        owner: ContractAddress, 
+        ref self: ContractState,
+        owner: ContractAddress,
         payment_token_address: ContractAddress,
         event_nft_classhash: ClassHash,
     ) {
@@ -542,7 +546,7 @@ pub mod ChainEvents {
             let nft_contract = self.event_nft_contracts.read(event_id);
             let nft = IEventNFTDispatcher { contract_address: nft_contract };
             let token_id = nft.mint_nft(attendee);
-            
+
             // Update registration with NFT details
             updated_registration.nft_token_id = token_id;
             self.attendee_event_details.write((event_id, attendee), updated_registration);
@@ -608,7 +612,7 @@ pub mod ChainEvents {
 
             // Deploy NFT contract for the event
             let nft_contract = self.deploy_event_nft(self.event_nft_classhash.read(), event_id);
-            
+
             // save event owner and NFT contract
             self.event_owners.write(event_id, event_owner);
             self.event_nft_contracts.write(event_id, nft_contract);
