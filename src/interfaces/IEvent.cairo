@@ -1,5 +1,5 @@
 use chainevents_contracts::base::types::{EventDetails, EventRegistration};
-use core::starknet::{ContractAddress, ClassHash};
+use starknet::{ContractAddress, ClassHash};
 /// @title Event Management Interface
 /// @notice Interface for managing events, registrations, and attendance
 /// @dev Includes functions for creating, managing events and handling registrations

@@ -9,14 +9,14 @@ pub mod FeeCollector {
         ALREADY_RSVP, INVALID_EVENT, EVENT_CLOSED,
     };
     use chainevents_contracts::interfaces::IFeeCollector::IFeeCollector;
-    use core::starknet::{
+    use starknet::{
         ContractAddress, get_caller_address, syscalls::deploy_syscall, ClassHash,
         get_block_timestamp,
         storage::{Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePathEntry},
     };
     use openzeppelin::access::ownable::OwnableComponent;
-    use openzeppelin_upgrades::UpgradeableComponent;
-    use openzeppelin_upgrades::interface::IUpgradeable;
+    use openzeppelin::upgrades::UpgradeableComponent;
+    use openzeppelin::upgrades::interface::IUpgradeable;
 
     component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
     component!(path: UpgradeableComponent, storage: upgradeable, event: UpgradeableEvent);

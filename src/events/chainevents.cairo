@@ -4,6 +4,7 @@
 /// @dev Implements Ownable and Upgradeable components from OpenZeppelin
 pub mod ChainEvents {
     use core::num::traits::zero::Zero;
+    use core::traits::TryInto;
     use chainevents_contracts::base::types::{EventDetails, EventRegistration, EventType};
     use chainevents_contracts::base::errors::Errors::{
         ZERO_ADDRESS_CALLER, NOT_OWNER, CLOSED_EVENT, ALREADY_REGISTERED, NOT_REGISTERED,
@@ -15,16 +16,16 @@ pub mod ChainEvents {
     use chainevents_contracts::interfaces::IEventNFT::{
         IEventNFTDispatcher, IEventNFTDispatcherTrait
     };
-    use core::starknet::{
+    use starknet::{
         ContractAddress, get_caller_address, syscalls::deploy_syscall, ClassHash,
-        get_block_timestamp, get_contract_address, contract_address_const,
+        get_block_timestamp, get_contract_address,
         storage::{
             Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePathEntry, Vec,
             MutableVecTrait, VecTrait, StoragePointerReadAccess, StoragePointerWriteAccess
         },
     };
     use openzeppelin::access::ownable::OwnableComponent;
-    use openzeppelin_upgrades::UpgradeableComponent;
+    use openzeppelin::upgrades::UpgradeableComponent;
     use openzeppelin::token::erc20::interface::{ERC20ABIDispatcher, ERC20ABIDispatcherTrait};
 
     component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
@@ -331,7 +332,7 @@ pub mod ChainEvents {
             assert(!already_joined, ALREADY_JOINED_WAITLIST);
 
             // Add user to the waitlist
-            self.waitlist.entry(event_id).append().write(caller);
+            self.waitlist.entry(event_id).push(caller);
 
             // Update the user's waitlist status
             self.joined_waitlist.write((event_id, caller), true);
@@ -428,7 +429,7 @@ pub mod ChainEvents {
             assert(caller == attendee_event.attendee_address, NOT_REGISTERED);
             assert(event.event_type == EventType::Paid, NOT_A_PAID_EVENT);
             assert(
-                self.event_payment_token.read() != contract_address_const::<0>(),
+                self.event_payment_token.read() != 0.try_into().unwrap(),
                 PAYMENT_TOKEN_NOT_SET,
             );
 
@@ -731,7 +732,7 @@ pub mod ChainEvents {
                 .read();
 
             assert(attendee_event_details.attendee_address == caller, NOT_REGISTERED);
-            assert(attendee_event_details.has_rsvp == false, ALREADY_RSVP);
+            assert(!attendee_event_details.has_rsvp, ALREADY_RSVP);
 
             self.attendee_event_details.entry((event_id, caller)).has_rsvp.write(true);
         }
