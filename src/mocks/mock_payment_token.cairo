@@ -1,12 +1,13 @@
 #[starknet::contract]
 pub mod PaymentToken {
-    use starknet::event::EventEmitter;
-    use starknet::{ContractAddress, get_caller_address};
-    use core::starknet::storage::{
-        StoragePointerReadAccess, StoragePointerWriteAccess, Map, StoragePathEntry,
-    };
     use chainevents_contracts::interfaces::IPaymentToken::IERC20;
     use core::num::traits::Zero;
+    use starknet::event::EventEmitter;
+    use starknet::storage::{
+        Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess,
+        StoragePointerWriteAccess,
+    };
+    use starknet::{ContractAddress, get_caller_address};
 
     #[storage]
     pub struct Storage {
@@ -61,34 +62,27 @@ pub mod PaymentToken {
         }
 
         fn balance_of(self: @ContractState, account: ContractAddress) -> u256 {
-            let balance = self.balances.entry(account).read();
-
-            balance
+            self.balances.read(account)
         }
 
         fn allowance(
             self: @ContractState, owner: ContractAddress, spender: ContractAddress,
         ) -> u256 {
-            let allowance = self.allowances.entry((owner, spender)).read();
-
-            allowance
+            self.allowances.read((owner, spender))
         }
 
         fn transfer(ref self: ContractState, recipient: ContractAddress, amount: u256) -> bool {
             let sender = get_caller_address();
 
-            let sender_prev_balance = self.balances.entry(sender).read();
-            let recipient_prev_balance = self.balances.entry(recipient).read();
+            let sender_prev_balance = self.balances.read(sender);
+            let recipient_prev_balance = self.balances.read(recipient);
 
             assert(sender_prev_balance >= amount, 'Insufficient amount');
 
-            self.balances.entry(sender).write(sender_prev_balance - amount);
-            self.balances.entry(recipient).write(recipient_prev_balance + amount);
+            self.balances.write(sender, sender_prev_balance - amount);
+            self.balances.write(recipient, recipient_prev_balance + amount);
 
-            assert(
-                self.balances.entry(recipient).read() > recipient_prev_balance,
-                'Transaction failed',
-            );
+            assert(self.balances.read(recipient) > recipient_prev_balance, 'Transaction failed');
 
             self.emit(Transfer { from: sender, to: recipient, amount });
 
@@ -103,16 +97,16 @@ pub mod PaymentToken {
         ) -> bool {
             let spender = get_caller_address();
 
-            let spender_allowance = self.allowances.entry((sender, spender)).read();
-            let sender_balance = self.balances.entry(sender).read();
-            let recipient_balance = self.balances.entry(recipient).read();
+            let spender_allowance = self.allowances.read((sender, spender));
+            let sender_balance = self.balances.read(sender);
+            let recipient_balance = self.balances.read(recipient);
 
             assert(amount <= spender_allowance, 'amount exceeds allowance');
             assert(amount <= sender_balance, 'amount exceeds balance');
 
-            self.allowances.entry((sender, spender)).write(spender_allowance - amount);
-            self.balances.entry(sender).write(sender_balance - amount);
-            self.balances.entry(recipient).write(recipient_balance + amount);
+            self.allowances.write((sender, spender), spender_allowance - amount);
+            self.balances.write(sender, sender_balance - amount);
+            self.balances.write(recipient, recipient_balance + amount);
 
             self.emit(Transfer { from: sender, to: recipient, amount });
 
@@ -122,7 +116,7 @@ pub mod PaymentToken {
         fn approve(ref self: ContractState, spender: ContractAddress, amount: u256) -> bool {
             let caller = get_caller_address();
 
-            self.allowances.entry((caller, spender)).write(amount);
+            self.allowances.write((caller, spender), amount);
 
             self.emit(Approval { owner: caller, spender, value: amount });
 
@@ -143,10 +137,10 @@ pub mod PaymentToken {
 
         fn mint(ref self: ContractState, recipient: ContractAddress, amount: u256) -> bool {
             let previous_total_supply = self.total_supply.read();
-            let previous_balance = self.balances.entry(recipient).read();
+            let previous_balance = self.balances.read(recipient);
 
             self.total_supply.write(previous_total_supply + amount);
-            self.balances.entry(recipient).write(previous_balance + amount);
+            self.balances.write(recipient, previous_balance + amount);
 
             let zero_address = Zero::zero();
 
