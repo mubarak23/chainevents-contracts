@@ -3,30 +3,30 @@
 /// @notice A contract for creating and managing events with registration and attendance tracking
 /// @dev Implements Ownable and Upgradeable components from OpenZeppelin
 pub mod ChainEvents {
-    use core::num::traits::zero::Zero;
-    use core::traits::TryInto;
-    use chainevents_contracts::base::types::{EventDetails, EventRegistration, EventType};
     use chainevents_contracts::base::errors::Errors::{
-        ZERO_ADDRESS_CALLER, NOT_OWNER, CLOSED_EVENT, ALREADY_REGISTERED, NOT_REGISTERED,
-        ALREADY_RSVP, INVALID_EVENT, EVENT_NOT_CLOSED, EVENT_CLOSED, TRANSFER_FAILED,
-        NOT_A_PAID_EVENT, PAYMENT_TOKEN_NOT_SET, EVENT_IS_FULL, INVALID_CAPACITY, EVENT_IS_NOT_FULL,
-        ALREADY_JOINED_WAITLIST, ALREADY_ATTENDED, NOT_AUTHORIZED, EVENT_NOT_FOUND
+        ALREADY_ATTENDED, ALREADY_JOINED_WAITLIST, ALREADY_REGISTERED, ALREADY_RSVP, CLOSED_EVENT,
+        EVENT_CLOSED, EVENT_IS_FULL, EVENT_IS_NOT_FULL, EVENT_NOT_CLOSED, EVENT_NOT_FOUND,
+        INVALID_CAPACITY, INVALID_EVENT, NOT_AUTHORIZED, NOT_A_PAID_EVENT, NOT_OWNER,
+        NOT_REGISTERED, PAYMENT_TOKEN_NOT_SET, TRANSFER_FAILED, ZERO_ADDRESS_CALLER,
     };
+    use chainevents_contracts::base::types::{EventDetails, EventRegistration, EventType};
     use chainevents_contracts::interfaces::IEvent::IEvent;
     use chainevents_contracts::interfaces::IEventNFT::{
-        IEventNFTDispatcher, IEventNFTDispatcherTrait
+        IEventNFTDispatcher, IEventNFTDispatcherTrait,
     };
-    use starknet::{
-        ContractAddress, get_caller_address, syscalls::deploy_syscall, ClassHash,
-        get_block_timestamp, get_contract_address,
-        storage::{
-            Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePathEntry, Vec,
-            MutableVecTrait, VecTrait, StoragePointerReadAccess, StoragePointerWriteAccess
-        },
-    };
+    use core::num::traits::zero::Zero;
+    use core::traits::TryInto;
     use openzeppelin::access::ownable::OwnableComponent;
-    use openzeppelin::upgrades::UpgradeableComponent;
     use openzeppelin::token::erc20::interface::{ERC20ABIDispatcher, ERC20ABIDispatcherTrait};
+    use openzeppelin::upgrades::UpgradeableComponent;
+    use starknet::storage::{
+        Map, MutableVecTrait, StorageMapReadAccess, StorageMapWriteAccess, StoragePathEntry,
+        StoragePointerReadAccess, StoragePointerWriteAccess, Vec, VecTrait,
+    };
+    use starknet::syscalls::deploy_syscall;
+    use starknet::{
+        ClassHash, ContractAddress, get_block_timestamp, get_caller_address, get_contract_address,
+    };
 
     component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
     component!(path: UpgradeableComponent, storage: upgradeable, event: UpgradeableEvent);
@@ -76,9 +76,9 @@ pub mod ChainEvents {
         joined_waitlist: Map<(u256, ContractAddress), bool>, // (event_id, user_address) -> bool
         event_nft_contracts: Map<u256, ContractAddress>, // event_id -> nft_contract_address
         attendance_marked: Map<
-            (u256, ContractAddress), bool
+            (u256, ContractAddress), bool,
         >, // (event_id, attendee) -> has_attended
-        event_nft_classhash: ClassHash, // NFT contract class hash for deployment
+        event_nft_classhash: ClassHash // NFT contract class hash for deployment
     }
 
     /// @notice Events emitted by the contract
@@ -237,7 +237,7 @@ pub mod ChainEvents {
         /// @dev Only callable by the event owner
         /// reverts if the event is not closed or if the new capacity is invalid
         /// reverts if the new capacity is less than or equal to the current attendees
-        fn update_event_max_capacity(ref self: ContractState, event_id: u256, max_capacity: u256,) {
+        fn update_event_max_capacity(ref self: ContractState, event_id: u256, max_capacity: u256) {
             let caller = get_caller_address();
             let event_owner = self.event_owners.read(event_id);
             assert(caller == event_owner, NOT_OWNER);
@@ -250,10 +250,7 @@ pub mod ChainEvents {
             event_details.max_capacity = max_capacity;
             self.event_details.write(event_id, event_details);
             // Emit event for the indexers
-            self
-                .emit(
-                    EventCapacityUpdated { event_id: event_id, new_max_capacity: max_capacity, },
-                );
+            self.emit(EventCapacityUpdated { event_id: event_id, new_max_capacity: max_capacity });
         }
 
         /// @notice Registers a user for an event
@@ -316,7 +313,7 @@ pub mod ChainEvents {
             self.emit(RSVPForEvent { event_id, attendee_address: caller });
         }
 
-        fn join_event_waitlist(ref self: ContractState, event_id: u256,) {
+        fn join_event_waitlist(ref self: ContractState, event_id: u256) {
             let caller = get_caller_address();
             assert(caller.is_non_zero(), ZERO_ADDRESS_CALLER);
             let event_details = self.event_details.read(event_id);
@@ -412,7 +409,7 @@ pub mod ChainEvents {
         fn event_registration_count(self: @ContractState, event_id: u256) -> u256 {
             // Validate event exists
             self._validate_event_exists(event_id.clone());
-            
+
             let caller = get_caller_address();
             let event_owner = self.event_owners.read(event_id);
             assert(caller == event_owner, NOT_OWNER);
@@ -428,10 +425,7 @@ pub mod ChainEvents {
 
             assert(caller == attendee_event.attendee_address, NOT_REGISTERED);
             assert(event.event_type == EventType::Paid, NOT_A_PAID_EVENT);
-            assert(
-                self.event_payment_token.read() != 0.try_into().unwrap(),
-                PAYMENT_TOKEN_NOT_SET,
-            );
+            assert(self.event_payment_token.read() != 0.try_into().unwrap(), PAYMENT_TOKEN_NOT_SET);
 
             self._pay_for_event(event.event_id, event.paid_amount, caller);
 
@@ -457,7 +451,7 @@ pub mod ChainEvents {
 
             self
                 .emit(
-                    WithdrawalMade { event_id, event_organizer: event_owner, amount: event_amount }
+                    WithdrawalMade { event_id, event_organizer: event_owner, amount: event_amount },
                 );
         }
         fn fetch_user_paid_event(self: @ContractState, user: ContractAddress) -> (u256, u256) {
@@ -486,7 +480,7 @@ pub mod ChainEvents {
         /// @notice Get fetch all event created by the function caller to pay for an event
         /// @return Array of events created by the caller
         fn events_by_organizer(
-            self: @ContractState, organizer: ContractAddress
+            self: @ContractState, organizer: ContractAddress,
         ) -> Array<EventDetails> {
             self._events_by_organizer(organizer)
         }
@@ -527,10 +521,9 @@ pub mod ChainEvents {
             let mut waitlist_addresses: Array<ContractAddress> = array![];
             let waitlist = self.waitlist.entry(event_id);
             let waitlist_position = self.waitlist_position.read(event_id);
-            for i in waitlist_position
-                ..waitlist.len() {
-                    waitlist_addresses.append(waitlist.at(i).read());
-                };
+            for i in waitlist_position..waitlist.len() {
+                waitlist_addresses.append(waitlist.at(i).read());
+            }
             waitlist_addresses
         }
 
@@ -746,9 +739,9 @@ pub mod ChainEvents {
                 let current_event: EventDetails = self.event_details.read(count);
                 if current_event.event_type == EventType::Paid {
                     paid_events.append(current_event);
-                };
+                }
                 count += 1;
-            };
+            }
 
             paid_events
         }
@@ -832,7 +825,7 @@ pub mod ChainEvents {
         ) -> u256 {
             // Validate event exists
             self._validate_event_exists(event_id);
-            
+
             let event_owner = self.event_owners.read(event_id);
             assert(caller == event_owner, NOT_OWNER);
             self.registered_attendees.read(event_id)
@@ -841,7 +834,7 @@ pub mod ChainEvents {
         fn _event_registration_count(self: @ContractState, event_id: u256) -> u256 {
             // Validate event exists
             self._validate_event_exists(event_id);
-            
+
             let caller = get_caller_address();
             let event_owner = self.event_owners.read(event_id);
             assert(caller == event_owner, NOT_OWNER);
@@ -857,7 +850,7 @@ pub mod ChainEvents {
                 let event: EventDetails = self.event_details.read(count);
                 events.append(event);
                 count += 1;
-            };
+            }
 
             events
         }
@@ -878,12 +871,12 @@ pub mod ChainEvents {
                     attendees.append(attendee_details);
                 }
                 count += 1;
-            };
+            }
             attendees
         }
 
         fn _events_by_organizer(
-            self: @ContractState, organizer: ContractAddress
+            self: @ContractState, organizer: ContractAddress,
         ) -> Array<EventDetails> {
             //  let caller = get_caller_address();
             let mut caller_events = ArrayTrait::new();
@@ -895,7 +888,7 @@ pub mod ChainEvents {
                     caller_events.append(self.event_details.read(count));
                 }
                 count += 1;
-            };
+            }
             caller_events
         }
 
@@ -915,9 +908,9 @@ pub mod ChainEvents {
                 let current_event: EventDetails = self.event_details.read(count);
                 if current_event.is_closed {
                     closed_events.append(current_event);
-                };
+                }
                 count += 1;
-            };
+            }
 
             closed_events
         }
@@ -931,9 +924,9 @@ pub mod ChainEvents {
                 let current_event: EventDetails = self.event_details.read(count);
                 if !current_event.is_closed {
                     open_events.append(current_event);
-                };
+                }
                 count += 1;
-            };
+            }
 
             open_events
         }
@@ -956,7 +949,7 @@ pub mod ChainEvents {
                     all_unpaid_events.append(current_event);
                 }
                 count += 1;
-            };
+            }
             all_unpaid_events
         }
 

@@ -1,17 +1,20 @@
 #[starknet::contract]
 pub mod PaymentToken {
-    use starknet::event::EventEmitter;
-    use starknet::{ContractAddress, get_caller_address};
-    use starknet::storage::{
-        Map, StoragePointerReadAccess, StoragePointerWriteAccess, StorageMapWriteAccess, StorageMapReadAccess,
-    };
     use chainevents_contracts::interfaces::IPaymentToken::IERC20;
     use core::num::traits::Zero;
+    use starknet::event::EventEmitter;
+    use starknet::storage::{
+        Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess,
+        StoragePointerWriteAccess,
+    };
+    use starknet::{ContractAddress, get_caller_address};
 
     #[storage]
     pub struct Storage {
         balances: Map<ContractAddress, u256>,
-        allowances: Map<(ContractAddress, ContractAddress), u256>, // Mapping<(owner, spender), amount>
+        allowances: Map<
+            (ContractAddress, ContractAddress), u256,
+        >, // Mapping<(owner, spender), amount>
         token_name: ByteArray,
         symbol: ByteArray,
         decimal: u8,
@@ -79,10 +82,7 @@ pub mod PaymentToken {
             self.balances.write(sender, sender_prev_balance - amount);
             self.balances.write(recipient, recipient_prev_balance + amount);
 
-            assert(
-                self.balances.read(recipient) > recipient_prev_balance,
-                'Transaction failed',
-            );
+            assert(self.balances.read(recipient) > recipient_prev_balance, 'Transaction failed');
 
             self.emit(Transfer { from: sender, to: recipient, amount });
 
