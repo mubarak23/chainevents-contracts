@@ -6,7 +6,7 @@ pub mod ChainEvents {
     use chainevents_contracts::base::errors::Errors::{
         ALREADY_REGISTERED, ALREADY_RSVP, CLOSED_EVENT, EVENT_CLOSED, INVALID_EVENT, NOT_OWNER,
         NOT_REGISTERED, ZERO_ADDRESS_CALLER, INVALID_PAYMENT_TOKEN, PAYMENT_FAILED, ALREADY_PAID, EVENT_NOT_PAID,
-        EVENT_NOT_CLOSED, ALREADY_WITHDRAWN,
+        EVENT_NOT_CLOSED, NO_WITHDRAWAL,
     };
     use chainevents_contracts::base::types::{EventDetails, EventRegistration, EventType};
     use chainevents_contracts::interfaces::IEvent::IEvent;
@@ -337,7 +337,7 @@ pub mod ChainEvents {
             assert(!event.is_closed, CLOSED_EVENT);
 
             // Validate attendee is registered
-            assert(registration.attendee_address == caller, NOT_REGISTERED);
+            assert(registration.attendee_address == caller, NOT_EVENT_REGISTERED);
             
             // Check if user has already paid
             let (paid_event_id, paid_amount) = self.paid_events.read(caller);
@@ -382,10 +382,10 @@ pub mod ChainEvents {
             assert(caller == event_owner, NOT_OWNER);
 
             let event = self.event_details.read(event_id);
-            assert(event.is_closed, EVENT_NOT_CLOSED);
+            // assert(event.is_closed, EVENT_NOT_CLOSED);
             
             let withdraw_amount = self.paid_events_amount.read(event_id);
-            assert(withdraw_amount > 0, ALREADY_WITHDRAWN);
+            assert(withdraw_amount > 0, NO_WITHDRAWAL);
             
             // Reset the total amount before transferring to prevent reentrancy
             self.paid_events_amount.write(event_id, 0);

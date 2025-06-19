@@ -34,5 +34,6 @@ pub mod Errors {
     pub const INVALID_PAYMENT_TOKEN: felt252 = 'Payment Token Is Not Set';
     pub const PAYMENT_FAILED: felt252 = 'Payment Transfer Failed';
     pub const ALREADY_PAID: felt252 = 'Already Paid For This Event';
-    pub const ALREADY_WITHDRAWN: felt252 = 'Already Withdrawn';
+    pub const NO_WITHDRAWAL: felt252 = 'No Funds To Withdraw';
+    pub const NOT_EVENT_REGISTERED: felt252 = 'Not Registered For Event';
 }
