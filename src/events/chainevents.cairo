@@ -360,7 +360,29 @@ pub mod ChainEvents {
         /// @param event_id The ID of the event to withdraw from
         /// @dev Reverts if caller isn't event owner or no funds available
         fn withdraw_paid_event_amount(ref self: ContractState, event_id: u256) {
+            let caller = get_caller_address();
+            let event_owner = self.event_owners.read(event_id);
+            
+            // Validate event ownership and existence
+            assert(!event_owner.is_zero(), INVALID_EVENT);
+            assert(caller == event_owner, NOT_OWNER);
 
+            let event = self.event_details.read(event_id);
+            assert(event.is_closed, EVENT_NOT_CLOSED);
+            
+            let withdraw_amount = self.paid_events_amount.read(event_id);
+            assert(withdraw_amount > 0, ALREADY_WITHDRAWN);
+            
+            // Reset the total amount before transferring to prevent reentrancy
+            self.paid_events_amount.write(event_id, 0);
+            
+            // Transfer funds to event owner
+            let payment_token: IERC20Dispatcher = self.event_token.read();
+            let status = payment_token
+                .transfer(event_owner, withdraw_amount);
+            assert(status, PAYMENT_FAILED);
+            
+            self.emit(PaymentWithdrawn { event_id, event_owner, amount: withdraw_amount });
         }
 
         fn fetch_user_paid_event(self: @ContractState) -> (u256, u256) {
