@@ -19,10 +19,15 @@ pub mod ChainEvents {
     use openzeppelin::access::ownable::OwnableComponent;
     use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
     use openzeppelin::upgrades::UpgradeableComponent;
+    use openzeppelin::security::ReentrancyGuardComponent;
 
 
     component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
     component!(path: UpgradeableComponent, storage: upgradeable, event: UpgradeableEvent);
+    // OpenZeppelin ReentrancyGuard component
+    component!(
+        path: ReentrancyGuardComponent, storage: reentrancy_guard, event: ReentrancyGuardEvent,
+    );
 
     #[abi(embed_v0)]
     impl OwnableImpl = OwnableComponent::OwnableImpl<ContractState>;
@@ -30,6 +35,8 @@ pub mod ChainEvents {
     impl OwnableInternalImpl = OwnableComponent::InternalImpl<ContractState>;
 
     impl UpgradeableInternalImpl = UpgradeableComponent::InternalImpl<ContractState>;
+
+    impl ReentrancyGuardInternalImpl = ReentrancyGuardComponent::InternalImpl<ContractState>;
 
     /// @notice Contract storage structure
     /// @dev Contains mappings for event management and tracking
@@ -39,6 +46,8 @@ pub mod ChainEvents {
         ownable: OwnableComponent::Storage,
         #[substorage(v0)]
         upgradeable: UpgradeableComponent::Storage,
+        #[substorage(v0)]
+        reentrancy_guard: ReentrancyGuardComponent::Storage,
         event_owners: Map<u256, ContractAddress>, // map(event_id, eventOwnerAddress)
         event_counts: u256,
         event_details: Map<u256, EventDetails>, // map(event_id, EventDetailsParams)
@@ -76,6 +85,8 @@ pub mod ChainEvents {
         UnregisteredEvent: UnregisteredEvent,
         PaymentMade: PaymentMade,
         PaymentWithdrawn: PaymentWithdrawn,
+        #[flat]
+        ReentrancyGuardEvent: ReentrancyGuardComponent::Event,
     }
 
     /// @notice Event emitted when a new event is created
@@ -312,6 +323,7 @@ pub mod ChainEvents {
         /// @param event_id The ID of the event to pay for
         /// @dev Reverts if event doesn't exist, isn't paid, or incorrect amount is sent
         fn pay_for_event(ref self: ContractState, event_id: u256) {
+            self.reentrancy_guard.start();
             let payment_token: IERC20Dispatcher = self.event_token.read();
             // assert(payment_token.is_non_zero(), INVALID_PAYMENT_TOKEN);
 
@@ -354,6 +366,8 @@ pub mod ChainEvents {
             self.attendee_event_details.write((event_id, caller), registration);
             
             self.emit(PaymentMade { event_id, attendee: caller, amount: event.paid_amount });
+
+            self.reentrancy_guard.end();
         }
 
         /// @notice Allows event owner to withdraw collected payments
