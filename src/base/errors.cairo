@@ -13,6 +13,7 @@ pub mod Errors {
     pub const NOT_TOKEN_OWNER: felt252 = 'Not Token Owner';
     pub const TOKEN_DOES_NOT_EXIST: felt252 = 'Token Does Not Exist';
     pub const EVENT_NOT_PAID: felt252 = 'Event is not paid';
+    pub const EVENT_NOT_CLOSED: felt252 = 'Event Is Not Closed';
 
     pub const GROUP_ID_EXISTS: felt252 = 'Group ID Already In Use';
     pub const INVALID_MAX_MEMBERS: felt252 = 'Maximum Member Must Be > 0';
@@ -29,4 +30,10 @@ pub mod Errors {
     pub const GROUP_ACTIVE: felt252 = 'Group Is Already Active';
     pub const GROUP_NOT_FULL: felt252 = 'Group Is Not Yet Full';
     pub const GROUP_ROUNDS_COMPLETED: felt252 = 'Group RoundS Already Completed';
+
+    pub const INVALID_PAYMENT_TOKEN: felt252 = 'Payment Token Is Not Set';
+    pub const PAYMENT_FAILED: felt252 = 'Payment Transfer Failed';
+    pub const ALREADY_PAID: felt252 = 'Already Paid For This Event';
+    pub const NO_WITHDRAWAL: felt252 = 'No Funds To Withdraw';
+    pub const NOT_EVENT_REGISTERED: felt252 = 'Not Registered For Event';
 }
