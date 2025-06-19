@@ -11,7 +11,7 @@ use chainevents_contracts::interfaces::IFeeCollector::{
 };
 use core::result::ResultTrait;
 use core::traits::TryInto;
-use openzeppelin::token::erc20::interface::{IERC20CamelDispatcher, IERC20CamelDispatcherTrait};
+use openzeppelin::token::erc20::interface::{IERC20CamelDispatcher, IERC20CamelDispatcherTrait, IERC20Dispatcher, IERC20DispatcherTrait};
 use snforge_std::{
     ContractClassTrait, DeclareResultTrait, EventSpyAssertionsTrait, declare, spy_events,
     start_cheat_caller_address, stop_cheat_caller_address,
@@ -35,21 +35,28 @@ fn RECIPIENT() -> ContractAddress {
 fn __setup__() -> ContractAddress {
     // deploy  events
     let events_class_hash = declare("ChainEvents").unwrap().contract_class();
+    let erc20 = __deploy_erc20__();
 
     let mut events_constructor_calldata: Array<felt252> = array![];
 
     let owner = OWNER();
 
     owner.serialize(ref events_constructor_calldata);
+    erc20.contract_address.serialize(ref events_constructor_calldata);
 
     let (event_contract_address, _) = events_class_hash
         .deploy(@events_constructor_calldata)
         .unwrap();
 
+    // Approve event contract to spend tokens
+    start_cheat_caller_address(erc20.contract_address, RECIPIENT());
+    erc20.approve(event_contract_address, 100_000_u256);
+    stop_cheat_caller_address(erc20.contract_address);
+
     return (event_contract_address);
 }
 
-fn __deploy_erc20__() -> IERC20CamelDispatcher {
+fn __deploy_erc20__() -> IERC20Dispatcher {
     let erc20_class_hash = declare("MyToken").unwrap().contract_class();
     let recipient = RECIPIENT();
     let mut erc20_constructor_calldata: Array<felt252> = array![];
@@ -58,7 +65,7 @@ fn __deploy_erc20__() -> IERC20CamelDispatcher {
 
     let (erc20_contract_address, _) = erc20_class_hash.deploy(@erc20_constructor_calldata).unwrap();
 
-    return IERC20CamelDispatcher { contract_address: erc20_contract_address };
+    return IERC20Dispatcher { contract_address: erc20_contract_address };
 }
 
 fn __setup_fee_collector__(
@@ -580,4 +587,108 @@ fn test_unregister_from_event() {
 //     stop_cheat_caller_address(fee_collector_address);
 // }
 
+
+// *************************************************************************
+//                          PAYMENT FUNCTIONALITY TESTS
+// *************************************************************************
+
+#[test]
+fn test_pay_for_event() {
+    let event_contract_address = __setup__();
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+    let erc20_token = __deploy_erc20__();
+
+    // Owner creates and upgrades event to paid
+    start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
+    let event_id = event_dispatcher.add_event("Paid Conference", "Virtual");
+    event_dispatcher.upgrade_event(event_id, 100); // Set price to 100
+    stop_cheat_caller_address(event_contract_address);
+
+    // User registers and pays for event
+    let user: ContractAddress = RECIPIENT();
+    start_cheat_caller_address(event_contract_address, user);
+    event_dispatcher.register_for_event(event_id);
+
+    let mut spy = spy_events();
+    event_dispatcher.pay_for_event(event_id);
+
+    // Verify payment was recorded
+    let (paid_event_id, amount_paid) = event_dispatcher.fetch_user_paid_event();
+    assert!(paid_event_id == event_id, "Incorrect event ID in payment record");
+    assert!(amount_paid == 100, "Incorrect amount paid");
+
+    // Verify event totals updated
+    // assert(event_dispatcher.paid_event_ticket_counts(event_id) == 1, "Ticket count incorrect");
+    // assert(event_dispatcher.event_total_amount_paid(event_id) == 100, "Total amount incorrect");
+
+    // Verify event emission
+    let expected_event = ChainEvents::Event::PaymentMade(
+        ChainEvents::PaymentMade { event_id, attendee: user, amount: 100 }
+    );
+    spy.assert_emitted(@array![(event_contract_address, expected_event)]);
+
+    stop_cheat_caller_address(event_contract_address);
+}
+
+#[test]
+#[should_panic(expected: 'Event is not paid')]
+fn test_pay_for_free_event() {
+    let event_contract_address = __setup__();
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    // Owner creates free event
+    start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
+    let event_id = event_dispatcher.add_event("Free Conference", "Virtual");
+    stop_cheat_caller_address(event_contract_address);
+
+    // User tries to pay
+    let user: ContractAddress = RECIPIENT();
+    start_cheat_caller_address(event_contract_address, user);
+    event_dispatcher.register_for_event(event_id);
+    event_dispatcher.pay_for_event(event_id);
+}
+
+#[test]
+#[should_panic(expected: 'Not Registered For Event')]
+fn test_unregisterded_pay_for_event() {
+    let event_contract_address = __setup__();
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    // Owner creates paid event
+    start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
+    let event_id = event_dispatcher.add_event("Paid Conference", "Virtual");
+    event_dispatcher.upgrade_event(event_id, 100);
+    stop_cheat_caller_address(event_contract_address);
+
+    // User tries paying for event without registering
+    let user: ContractAddress = RECIPIENT();
+    start_cheat_caller_address(event_contract_address, user);
+    event_dispatcher.register_for_event(event_id);
+    
+    // User unregisters before paying
+    event_dispatcher.unregister_from_event(event_id);
+
+    // User tries to pay after unregistering
+    event_dispatcher.pay_for_event(event_id); // Should panic
+}
+
+#[test]
+#[should_panic(expected: 'Already Paid For This Event')]
+fn test_pay_for_event_twice() {
+    let event_contract_address = __setup__();
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    // Owner creates paid event
+    start_cheat_caller_address(event_contract_address, USER_ONE.try_into().unwrap());
+    let event_id = event_dispatcher.add_event("Paid Conference", "Virtual");
+    event_dispatcher.upgrade_event(event_id, 100);
+    stop_cheat_caller_address(event_contract_address);
+
+    // User pays twice
+    let user: ContractAddress = RECIPIENT();
+    start_cheat_caller_address(event_contract_address, user);
+    event_dispatcher.register_for_event(event_id);
+    event_dispatcher.pay_for_event(event_id);
+    event_dispatcher.pay_for_event(event_id); // Should panic
+}
 

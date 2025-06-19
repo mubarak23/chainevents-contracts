@@ -6,7 +6,7 @@ pub mod ChainEvents {
     use chainevents_contracts::base::errors::Errors::{
         ALREADY_REGISTERED, ALREADY_RSVP, CLOSED_EVENT, EVENT_CLOSED, INVALID_EVENT, NOT_OWNER,
         NOT_REGISTERED, ZERO_ADDRESS_CALLER, INVALID_PAYMENT_TOKEN, PAYMENT_FAILED, ALREADY_PAID, EVENT_NOT_PAID,
-        EVENT_NOT_CLOSED, NO_WITHDRAWAL,
+        EVENT_NOT_CLOSED, NO_WITHDRAWAL, NOT_EVENT_REGISTERED,
     };
     use chainevents_contracts::base::types::{EventDetails, EventRegistration, EventType};
     use chainevents_contracts::interfaces::IEvent::IEvent;
