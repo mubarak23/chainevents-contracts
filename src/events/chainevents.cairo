@@ -4,9 +4,10 @@
 /// @dev Implements Ownable and Upgradeable components from OpenZeppelin
 pub mod ChainEvents {
     use chainevents_contracts::base::errors::Errors::{
-        ALREADY_REGISTERED, ALREADY_RSVP, CLOSED_EVENT, EVENT_CLOSED, INVALID_EVENT, NOT_OWNER,
-        NOT_REGISTERED, ZERO_ADDRESS_CALLER, INVALID_PAYMENT_TOKEN, PAYMENT_FAILED, ALREADY_PAID, EVENT_NOT_PAID,
-        EVENT_NOT_CLOSED, NO_WITHDRAWAL, NOT_EVENT_REGISTERED,
+        ALREADY_PAID, ALREADY_REGISTERED, ALREADY_RSVP, CLOSED_EVENT, EVENT_CLOSED,
+        EVENT_NOT_CLOSED, EVENT_NOT_PAID, INVALID_EVENT, INVALID_PAYMENT_TOKEN,
+        NOT_EVENT_REGISTERED, NOT_OWNER, NOT_REGISTERED, NO_WITHDRAWAL, PAYMENT_FAILED,
+        ZERO_ADDRESS_CALLER,
     };
     use chainevents_contracts::base::types::{EventDetails, EventRegistration, EventType};
     use chainevents_contracts::interfaces::IEvent::IEvent;
@@ -15,11 +16,13 @@ pub mod ChainEvents {
         Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePathEntry,
     };
     use core::starknet::syscalls::deploy_syscall;
-    use core::starknet::{ClassHash, ContractAddress, get_block_timestamp, get_caller_address, get_contract_address};
+    use core::starknet::{
+        ClassHash, ContractAddress, get_block_timestamp, get_caller_address, get_contract_address,
+    };
     use openzeppelin::access::ownable::OwnableComponent;
+    use openzeppelin::security::ReentrancyGuardComponent;
     use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
     use openzeppelin::upgrades::UpgradeableComponent;
-    use openzeppelin::security::ReentrancyGuardComponent;
 
 
     component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
@@ -163,7 +166,9 @@ pub mod ChainEvents {
     /// @notice Initializes the Events contract
     /// @dev Sets the initial event count to 0
     #[constructor]
-    fn constructor(ref self: ContractState, owner: ContractAddress, event_token_address: ContractAddress) {
+    fn constructor(
+        ref self: ContractState, owner: ContractAddress, event_token_address: ContractAddress,
+    ) {
         self.event_counts.write(0);
         self.ownable.initializer(owner);
         self.event_token.write(IERC20Dispatcher { contract_address: event_token_address });
@@ -330,7 +335,7 @@ pub mod ChainEvents {
             let caller = get_caller_address();
             let event = self.event_details.read(event_id);
             let mut registration = self.attendee_event_details.read((event_id, caller));
-            
+
             // Validate event exists and is paid type
             assert(event.event_id == event_id, INVALID_EVENT);
             assert(event.event_type == EventType::Paid, EVENT_NOT_PAID);
@@ -338,33 +343,32 @@ pub mod ChainEvents {
 
             // Validate attendee is registered
             assert(registration.attendee_address == caller, NOT_EVENT_REGISTERED);
-            
+
             // Check if user has already paid
             let (paid_event_id, paid_amount) = self.paid_events.read(caller);
             assert(paid_event_id != event_id, ALREADY_PAID);
 
             // Make payment into event contract
             let event_contract = get_contract_address();
-            let status = payment_token
-                .transfer_from(caller, event_contract, event.paid_amount);
+            let status = payment_token.transfer_from(caller, event_contract, event.paid_amount);
 
             assert(status, PAYMENT_FAILED);
-            
+
             // Update payment tracking
             self.paid_events.write(caller, (event_id, event.paid_amount));
-            
+
             // Update total amount collected for this event
             let current_total = self.paid_events_amount.read(event_id);
             self.paid_events_amount.write(event_id, current_total + event.paid_amount);
-            
+
             // Update tickets count
             let current_count = self.paid_event_ticket_count.read(event_id);
             self.paid_event_ticket_count.write(event_id, current_count + 1);
-            
+
             // Update attendee registration with payment info
             registration.amount_paid = event.paid_amount;
             self.attendee_event_details.write((event_id, caller), registration);
-            
+
             self.emit(PaymentMade { event_id, attendee: caller, amount: event.paid_amount });
 
             self.reentrancy_guard.end();
@@ -376,26 +380,25 @@ pub mod ChainEvents {
         fn withdraw_paid_event_amount(ref self: ContractState, event_id: u256) {
             let caller = get_caller_address();
             let event_owner = self.event_owners.read(event_id);
-            
+
             // Validate event ownership and existence
             assert(!event_owner.is_zero(), INVALID_EVENT);
             assert(caller == event_owner, NOT_OWNER);
 
             let event = self.event_details.read(event_id);
             // assert(event.is_closed, EVENT_NOT_CLOSED);
-            
+
             let withdraw_amount = self.paid_events_amount.read(event_id);
             assert(withdraw_amount > 0, NO_WITHDRAWAL);
-            
+
             // Reset the total amount before transferring to prevent reentrancy
             self.paid_events_amount.write(event_id, 0);
-            
+
             // Transfer funds to event owner
             let payment_token: IERC20Dispatcher = self.event_token.read();
-            let status = payment_token
-                .transfer(event_owner, withdraw_amount);
+            let status = payment_token.transfer(event_owner, withdraw_amount);
             assert(status, PAYMENT_FAILED);
-            
+
             self.emit(PaymentWithdrawn { event_id, event_owner, amount: withdraw_amount });
         }
 
