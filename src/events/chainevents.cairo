@@ -385,8 +385,10 @@ pub mod ChainEvents {
             self.emit(PaymentWithdrawn { event_id, event_owner, amount: withdraw_amount });
         }
 
+        /// @notice Gets the payment details for the calling user
+        /// @return (event_id, amount_paid) tuple
         fn fetch_user_paid_event(self: @ContractState) -> (u256, u256) {
-            (0, 0)
+            self.paid_events.read(get_caller_address())
         }
 
         fn paid_event_ticket_counts(self: @ContractState) -> u256 {
