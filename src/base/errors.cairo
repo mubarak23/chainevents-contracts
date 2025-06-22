@@ -14,6 +14,7 @@ pub mod Errors {
     pub const ALREADY_MINTED: felt252 = 'Event NFT already minted';
     pub const NOT_TOKEN_OWNER: felt252 = 'Not Token Owner';
     pub const TOKEN_DOES_NOT_EXIST: felt252 = 'Token Does Not Exist';
+    pub const EVENT_NOT_FOUND: felt252 = 'Event Not Found';
 
     pub const NOT_A_PAID_EVENT: felt252 = 'Not a Paid Event';
     pub const TRANSFER_FAILED: felt252 = 'Transfer Failed';

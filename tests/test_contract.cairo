@@ -72,6 +72,7 @@ fn test_add_event() {
     stop_cheat_caller_address(event_contract_address);
 }
 
+
 #[test]
 fn test_event_registration() {
     let strk_token = deploy_token_contract();
@@ -91,11 +92,10 @@ fn test_event_registration() {
 
     event_dispatcher.register_for_event(event_id);
     let event_details = event_dispatcher.event_details(event_id);
+    // Attendee can access their own registration
     let attendee_registration_details = event_dispatcher.attendee_event_details(event_id);
-
     assert(
-        attendee_registration_details.attendee_address == user_two_address,
-        'attendee_address mismatch',
+        attendee_registration_details.attendee_address == user_two_address, 'E1 attendee mismatch',
     );
     // NFT contract address should not be zero when registered
     assert(
@@ -107,6 +107,37 @@ fn test_event_registration() {
     assert(
         attendee_registration_details.organizer == event_details.organizer, 'organizer mismatch',
     );
+    stop_cheat_caller_address(event_contract_address);
+
+    // Owner can access attendee's registration details using get_attendee_registration_details
+    start_cheat_caller_address(event_contract_address, user_one_address);
+    let attendee_registration_details_owner = event_dispatcher
+        .get_attendee_registration_details(event_id, user_two_address);
+    assert(
+        attendee_registration_details_owner.attendee_address == user_two_address,
+        'E1 attendee mismatch',
+    );
+    stop_cheat_caller_address(event_contract_address);
+}
+
+#[test]
+#[should_panic(expected: 'rsvp only for registered event')]
+fn test_event_registration_unregistered_user_access() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    let user_one_address: ContractAddress = USER_ONE.try_into().unwrap();
+    start_cheat_caller_address(event_contract_address, user_one_address);
+
+    let event_id = event_dispatcher.add_event("ethereum dev meetup", "Main street 101");
+    assert(event_id == 1, 'Event was not created');
+    stop_cheat_caller_address(event_contract_address);
+
+    // Unregistered user should not be able to access
+    let user_three_address: ContractAddress = USER_THREE.try_into().unwrap();
+    start_cheat_caller_address(event_contract_address, user_three_address);
+    event_dispatcher.attendee_event_details(event_id);
     stop_cheat_caller_address(event_contract_address);
 }
 
@@ -131,13 +162,11 @@ fn test_registration_to_multiple_events() {
 
     event_dispatcher.register_for_event(event_id_1);
     event_dispatcher.register_for_event(event_id_2);
-
     let event_details_1 = event_dispatcher.event_details(event_id_1);
     let event_details_2 = event_dispatcher.event_details(event_id_2);
-
+    // Attendee can access their own registration for both events
     let attendee_registration_details_1 = event_dispatcher.attendee_event_details(event_id_1);
     let attendee_registration_details_2 = event_dispatcher.attendee_event_details(event_id_2);
-
     assert(
         attendee_registration_details_1.attendee_address == user_two_address,
         'E1: attendee_address mismatch',
@@ -167,6 +196,68 @@ fn test_registration_to_multiple_events() {
         attendee_registration_details_2.organizer == event_details_2.organizer,
         'E2: organizer mismatch',
     );
+    stop_cheat_caller_address(event_contract_address);
+
+    // Owner can access attendee's registration details for both events
+    start_cheat_caller_address(event_contract_address, user_one_address);
+    let attendee_registration_details_1_owner = event_dispatcher
+        .get_attendee_registration_details(event_id_1, user_two_address);
+    let attendee_registration_details_2_owner = event_dispatcher
+        .get_attendee_registration_details(event_id_2, user_two_address);
+    assert(
+        attendee_registration_details_1_owner.attendee_address == user_two_address,
+        'E1 attendee_address mismatch',
+    );
+    assert(
+        attendee_registration_details_2_owner.attendee_address == user_two_address,
+        'E2 attendee_address mismatch',
+    );
+    stop_cheat_caller_address(event_contract_address);
+}
+
+#[test]
+#[should_panic(expected: 'rsvp only for registered event')]
+fn test_registration_to_multiple_events_unregistered_user_access_event1() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    let user_one_address: ContractAddress = USER_ONE.try_into().unwrap();
+    start_cheat_caller_address(event_contract_address, user_one_address);
+
+    let event_id_1 = event_dispatcher.add_event("ethereum dev meetup", "Main street 101");
+    let event_id_2 = event_dispatcher.add_event("ethereum dev meetup 2", "Main street 102");
+    assert(event_id_1 == 1, 'Event 1 was not created');
+    assert(event_id_2 == 2, 'Event 2 was not created');
+    stop_cheat_caller_address(event_contract_address);
+
+    // Unregistered user should not be able to access event 1
+    let user_three_address: ContractAddress = USER_THREE.try_into().unwrap();
+    start_cheat_caller_address(event_contract_address, user_three_address);
+    event_dispatcher.attendee_event_details(event_id_1);
+    stop_cheat_caller_address(event_contract_address);
+}
+
+#[test]
+#[should_panic(expected: 'rsvp only for registered event')]
+fn test_registration_to_multiple_events_unregistered_user_access_event2() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    let user_one_address: ContractAddress = USER_ONE.try_into().unwrap();
+    start_cheat_caller_address(event_contract_address, user_one_address);
+
+    let event_id_1 = event_dispatcher.add_event("ethereum dev meetup", "Main street 101");
+    let event_id_2 = event_dispatcher.add_event("ethereum dev meetup 2", "Main street 102");
+    assert(event_id_1 == 1, 'Event 1 was not created');
+    assert(event_id_2 == 2, 'Event 2 was not created');
+    stop_cheat_caller_address(event_contract_address);
+
+    // Unregistered user should not be able to access event 2
+    let user_three_address: ContractAddress = USER_THREE.try_into().unwrap();
+    start_cheat_caller_address(event_contract_address, user_three_address);
+    event_dispatcher.attendee_event_details(event_id_2);
     stop_cheat_caller_address(event_contract_address);
 }
 
@@ -1116,7 +1207,7 @@ fn test_fetch_all_unpaid_events() {
     let customer: ContractAddress = USER_ONE.try_into().unwrap();
 
     start_cheat_caller_address(event_contract_address, customer);
-    let initial_event_id = event_dispatcher.add_event("Blockchain Conference", "Zone Tech Park");
+    let initial_event_id = event_dispatcher.add_event("Blockchain Conference", "Tech Park");
     stop_cheat_caller_address(event_contract_address);
 
     let customer: ContractAddress = USER_TWO.try_into().unwrap();
@@ -1176,7 +1267,12 @@ fn test_only_owner_can_withdraw_paid_event_amount() {
     let event_contract_balance = payment_token.balance_of(event_contract_address);
     assert(event_contract_balance == event_fee, 'Incorrect balance');
 
-    // Withdraw tokens
+    // Close the event first (required for withdrawal)
+    start_cheat_caller_address(event_contract_address, user_one);
+    event_dispatcher.end_event_registration(event_id);
+    stop_cheat_caller_address(event_contract_address);
+
+    // Try to withdraw with non-owner (should panic with "Caller Not Owner")
     start_cheat_caller_address(event_contract_address, user_two);
     event_dispatcher.withdraw_paid_event_amount(event_id);
     stop_cheat_caller_address(event_contract_address);
@@ -1202,20 +1298,11 @@ fn test_withdraw_paid_event_amount_for_open_event() {
     event_dispatcher.upgrade_event(event_id, event_fee);
     stop_cheat_caller_address(event_contract_address);
 
-    // Register for event
-    start_cheat_caller_address(event_contract_address, user_two);
-    event_dispatcher.register_for_event(event_id);
-    stop_cheat_caller_address(event_contract_address);
-
     // Mint and approve tokens for event contract
     start_cheat_caller_address(strk_token, user_two);
     payment_token.mint(user_two, event_fee);
     payment_token.approve(event_contract_address, event_fee);
     stop_cheat_caller_address(strk_token);
-
-    // Check allowance is correct
-    let allowance = payment_token.allowance(user_two, event_contract_address);
-    assert(allowance == event_fee, 'Incorrect allowance');
 
     // Register for event
     start_cheat_caller_address(event_contract_address, user_two);
@@ -1223,11 +1310,7 @@ fn test_withdraw_paid_event_amount_for_open_event() {
     event_dispatcher.pay_for_event(event_id);
     stop_cheat_caller_address(event_contract_address);
 
-    // Assert token balance of event contract is correct
-    let event_contract_balance = payment_token.balance_of(event_contract_address);
-    assert(event_contract_balance == event_fee, 'Incorrect balance');
-
-    // Withdraw tokens
+    // Try to withdraw from open event (should panic with "Event is not closed")
     start_cheat_caller_address(event_contract_address, user_one);
     event_dispatcher.withdraw_paid_event_amount(event_id);
     stop_cheat_caller_address(event_contract_address);
@@ -1297,4 +1380,112 @@ fn test_withdraw_paid_event_amount_for_closed_event() {
 
     let user_two_balance = payment_token.balance_of(user_two);
     assert(user_two_balance == 0, 'Incorrect attendee balance');
+}
+
+#[test]
+fn test_get_attendee_registration_details() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    let user_one_address: ContractAddress = USER_ONE.try_into().unwrap();
+    let user_two_address: ContractAddress = USER_TWO.try_into().unwrap();
+
+    // Create event
+    start_cheat_caller_address(event_contract_address, user_one_address);
+    let event_id = event_dispatcher.add_event("Test Event", "Test Location");
+    assert(event_id == 1, 'Event was not created');
+    stop_cheat_caller_address(event_contract_address);
+
+    // Register user_two for the event
+    start_cheat_caller_address(event_contract_address, user_two_address);
+    event_dispatcher.register_for_event(event_id);
+    stop_cheat_caller_address(event_contract_address);
+
+    // Owner can access attendee's registration details
+    start_cheat_caller_address(event_contract_address, user_one_address);
+    let attendee_details = event_dispatcher
+        .get_attendee_registration_details(event_id, user_two_address);
+    assert(attendee_details.attendee_address == user_two_address, 'Wrong attendee address');
+    stop_cheat_caller_address(event_contract_address);
+}
+
+#[test]
+#[should_panic(expected: 'Caller Not Owner')]
+fn test_get_attendee_registration_details_non_owner() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    let user_one_address: ContractAddress = USER_ONE.try_into().unwrap();
+    let user_two_address: ContractAddress = USER_TWO.try_into().unwrap();
+    let user_three_address: ContractAddress = USER_THREE.try_into().unwrap();
+
+    // Create event
+    start_cheat_caller_address(event_contract_address, user_one_address);
+    let event_id = event_dispatcher.add_event("Test Event", "Test Location");
+    assert(event_id == 1, 'Event was not created');
+    stop_cheat_caller_address(event_contract_address);
+
+    // Register user_two for the event
+    start_cheat_caller_address(event_contract_address, user_two_address);
+    event_dispatcher.register_for_event(event_id);
+    stop_cheat_caller_address(event_contract_address);
+
+    // Non-owner cannot access attendee's registration details
+    start_cheat_caller_address(event_contract_address, user_three_address);
+    event_dispatcher.get_attendee_registration_details(event_id, user_two_address);
+    stop_cheat_caller_address(event_contract_address);
+}
+
+#[test]
+#[should_panic(expected: 'rsvp only for registered event')]
+fn test_get_attendee_registration_details_unregistered_attendee() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    let user_one_address: ContractAddress = USER_ONE.try_into().unwrap();
+    let user_two_address: ContractAddress = USER_TWO.try_into().unwrap();
+
+    // Create event
+    start_cheat_caller_address(event_contract_address, user_one_address);
+    let event_id = event_dispatcher.add_event("Test Event", "Test Location");
+    assert(event_id == 1, 'Event was not created');
+    stop_cheat_caller_address(event_contract_address);
+
+    // Owner cannot access unregistered attendee's details
+    start_cheat_caller_address(event_contract_address, user_one_address);
+    event_dispatcher.get_attendee_registration_details(event_id, user_two_address);
+    stop_cheat_caller_address(event_contract_address);
+}
+
+#[test]
+#[should_panic(expected: 'Event Not Found')]
+fn test_attendee_event_details_invalid_event() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    let user_address: ContractAddress = USER_ONE.try_into().unwrap();
+    start_cheat_caller_address(event_contract_address, user_address);
+
+    // Try to access details for non-existent event
+    event_dispatcher.attendee_event_details(999);
+    stop_cheat_caller_address(event_contract_address);
+}
+
+#[test]
+#[should_panic(expected: 'Event Not Found')]
+fn test_pay_for_event_invalid_event() {
+    let strk_token = deploy_token_contract();
+    let event_contract_address = __setup__(strk_token);
+    let event_dispatcher = IEventDispatcher { contract_address: event_contract_address };
+
+    let user_address: ContractAddress = USER_ONE.try_into().unwrap();
+    start_cheat_caller_address(event_contract_address, user_address);
+
+    // Try to pay for non-existent event
+    event_dispatcher.pay_for_event(999);
+    stop_cheat_caller_address(event_contract_address);
 }

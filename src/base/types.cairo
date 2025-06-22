@@ -1,4 +1,4 @@
-use core::starknet::ContractAddress;
+use starknet::ContractAddress;
 
 /// @title Event Details Structure
 /// @notice Contains comprehensive information about an event
@@ -38,6 +38,7 @@ pub struct EventRegistration {
 /// @dev Used to distinguish between free and paid events
 #[derive(Debug, Drop, Serde, starknet::Store, Clone, PartialEq)]
 pub enum EventType {
+    #[default]
     Free,
     Paid,
 }
