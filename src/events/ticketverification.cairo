@@ -166,22 +166,7 @@ pub mod TicketVerification {
         }
 
         fn verify_ticket_event(ref self: ContractState, ticket_id: u256) -> bool {
-            let ticket_used = self.ticket_used.read(ticket_id);
-            let ticket_owner = self.ticket_owners.read(ticket_id);
-            assert!(ticket_owner == get_caller_address(), "Callet not owner of the ticket");
-            assert!(!ticket_used, "Ticket already used");
-
-            let ticket = self.ticket_events.read(ticket_id);
-            self.ticket_used.write(ticket_id, true);
-            self
-                .emit(
-                    Event::TicketUsed(
-                        TicketUsed {
-                            ticket_id: ticket_id, event_id: ticket, user: get_caller_address()
-                        }
-                    )
-                );
-            true
+            self._verify_ticket_event(ticket_id)
         }
 
         fn transfer_ticket(ref self: ContractState, ticket_id: u256, to: ContractAddress) {
@@ -224,6 +209,28 @@ pub mod TicketVerification {
 
     #[generate_trait]
     impl InternalImpl of InternalTrait {
+        /// @notice Verifies a ticket and marks it as used
+        /// @param ticket_id The ID of the ticket to verify
+        /// @return bool True if verification succeeds
+        fn _verify_ticket_event(ref self: ContractState, ticket_id: u256) -> bool {
+            let ticket_used = self.ticket_used.read(ticket_id);
+            let ticket_owner = self.ticket_owners.read(ticket_id);
+            assert!(ticket_owner == get_caller_address(), "Caller not owner of the ticket");
+            assert!(!ticket_used, "Ticket already used");
+            let event_id = self.ticket_events.read(ticket_id);
+            self.ticket_used.write(ticket_id, true);
+            self
+                .emit(
+                    Event::TicketUsed(
+                        TicketUsed {
+                            ticket_id: ticket_id, event_id: event_id, user: get_caller_address(),
+                        },
+                    ),
+                );
+            true
+        }
+
+
         /// @notice Upgrades the contract implementation
         /// @param new_class_hash The new class hash to upgrade to
         /// @dev Only callable by owner
